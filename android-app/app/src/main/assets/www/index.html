@@ -5,11 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>WorkspaceHelper</title>
 <style>
-  :root{
-    --bg:#0D0F14; --surface:#171A21; --surface2:#1F232C; --border:#242933;
-    --text:#F4F6FA; --muted:#9AA3B2; --accent:#7C6CF6; --accent2:#A99BFF;
-    --green:#34D399; --rose:#FB7185; --amber:#FBBF24;
-  }
+  :root{ --bg:#0D0F14; --surface:#171A21; --surface2:#1F232C; --border:#242933; --border2:#1C202A; --border3:#20242E; --track:#242935; --nav:#10131A; --field:#0F1218; --card2:#12151C; --chip:#1A1D25; --hero1:#1B1F29; --hero2:#15181F; --text:#F4F6FA; --text2:#C7CDD9; --muted:#9AA3B2; --muted3:#6B7280; --accent:#7C6CF6; --accent2:#A99BFF; --accentdeep:#4F46E5; --green:#34D399; --greentext:#6EE7B7; --greenbg:#10271F; --greenpill:#12261B; --rose:#FB7185; --rosebg:#2A1619; --violetbg:#241E3C; --violetborder:#2E2655; --violetchipborder:#3B2F63; --cyan:#22D3EE; --amber:#FBBF24; }
+  body.light{ --bg:#F3F5F9; --surface:#FFFFFF; --surface2:#EDF0F5; --border:#E3E7EE; --border2:#E6EAF1; --border3:#E3E7EE; --track:#E3E7EE; --nav:#FFFFFF; --field:#EDF0F5; --card2:#F6F8FB; --chip:#EDF0F5; --hero1:#FFFFFF; --hero2:#EEF2F7; --text:#141821; --text2:#2B3240; --muted:#5B6472; --muted3:#7A8494; --accent:#6D5EF0; --accent2:#6D5EF0; --accentdeep:#4F46E5; --green:#059669; --greentext:#0E9F6E; --greenbg:#DCFCE7; --greenpill:#DCFCE7; --rose:#E11D48; --rosebg:#FEE2E2; --violetbg:#EDE9FE; --violetborder:#DDD6FE; --violetchipborder:#C4B5FD; --cyan:#0891B2; --amber:#D97706; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--text);
@@ -27,23 +24,23 @@
   .label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
   .big{font-size:30px;font-weight:700;line-height:1.1}
   .btn{border:none;border-radius:12px;padding:12px 16px;font-size:13.5px;font-weight:600;min-height:44px}
-  .btn-stop{background:#2A1619;color:var(--rose)}
-  .btn-go{background:#10271F;color:var(--green)}
+  .btn-stop{background:var(--rosebg);color:var(--rose)}
+  .btn-go{background:var(--greenbg);color:var(--green)}
   .btn-accent{background:var(--accent);color:#fff}
-  .btn-soft{background:var(--surface2);color:var(--accent2);border:1px solid #2E2655}
-  .btn-ghost{background:transparent;color:#C7CDD9;border:1px solid var(--border)}
+  .btn-soft{background:var(--surface2);color:var(--accent2);border:1px solid var(--violetborder)}
+  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
   .btn-wide{width:100%;display:flex;align-items:center;justify-content:center;gap:9px}
   .chips{display:flex;gap:8px;margin-top:12px}
-  .chip{flex:1;border:1px solid var(--border);background:transparent;color:#C7CDD9;font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 0;min-height:42px}
-  .chip.on{background:#241E3C;border-color:#3B2F63;color:var(--accent2)}
-  .bar{height:7px;border-radius:999px;background:#242935;overflow:hidden;margin-top:6px}
-  .bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),#22D3EE)}
-  input{width:100%;background:#0F1218;border:1px solid var(--border);border-radius:12px;color:var(--text);
+  .chip{flex:1;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 0;min-height:42px}
+  .chip.on{background:var(--violetbg);border-color:var(--violetchipborder);color:var(--accent2)}
+  .bar{height:7px;border-radius:999px;background:var(--track);overflow:hidden;margin-top:6px}
+  .bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--cyan))}
+  input{width:100%;background:var(--field);border:1px solid var(--border);border-radius:12px;color:var(--text);
     padding:13px 14px;font-size:14px;margin-top:6px}
   label.fld{display:block;margin-top:14px;font-size:12.5px;color:var(--muted)}
-  nav{position:fixed;left:0;right:0;bottom:0;height:68px;background:#10131A;border-top:1px solid #1C202A;
+  nav{position:fixed;left:0;right:0;bottom:0;height:68px;background:var(--nav);border-top:1px solid var(--border2);
     display:flex;align-items:center;justify-content:space-around;padding-bottom:env(safe-area-inset-bottom)}
-  nav button{background:none;border:none;color:#6B7280;font-size:10.5px;font-weight:600;
+  nav button{background:none;border:none;color:var(--muted3);font-size:10.5px;font-weight:600;
     display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 10px}
   nav button.on{color:var(--accent2)}
   nav svg{width:21px;height:21px}
@@ -51,17 +48,17 @@
   .list .it{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
   .list .it:first-child{border-top:none}
   .overlay{position:fixed;inset:0;background:rgba(5,6,9,.74);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
-  .modal{width:100%;max-width:330px;background:#15181F;border:1px solid var(--border);border-radius:22px;padding:24px;text-align:center}
-  .toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:#20242E;border:1px solid var(--border);
+  .modal{width:100%;max-width:330px;background:var(--hero2);border:1px solid var(--border);border-radius:22px;padding:24px;text-align:center}
+  .toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:var(--border3);border:1px solid var(--border);
     color:var(--text);padding:11px 16px;border-radius:12px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s}
   .toast.show{opacity:1}
-  .seg{display:flex;gap:6px;background:#0F1218;border:1px solid var(--border);border-radius:12px;padding:5px;margin-top:8px}
+  .seg{display:flex;gap:6px;background:var(--field);border:1px solid var(--border);border-radius:12px;padding:5px;margin-top:8px}
   .seg button{flex:1;border:none;background:transparent;color:var(--muted);font-weight:600;font-size:12.5px;padding:10px 0;border-radius:9px;min-height:42px}
-  .seg button.on{background:#241E3C;color:var(--accent2)}
+  .seg button.on{background:var(--violetbg);color:var(--accent2)}
   .ss{width:100%;border-radius:12px;border:1px solid var(--border);margin-top:12px;display:block}
   .hdr{display:flex;align-items:center;gap:11px}
-  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7C6CF6,#4F46E5);display:flex;align-items:center;justify-content:center;flex:none}
-  select{width:100%;background:#0F1218;border:1px solid var(--border);border-radius:12px;color:var(--text);padding:13px 14px;font-size:14px;margin-top:6px}
+  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accentdeep));display:flex;align-items:center;justify-content:center;flex:none}
+  select{width:100%;background:var(--field);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:13px 14px;font-size:14px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -93,10 +90,10 @@
         <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" class="svc" style="stroke:#fff"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg></div>
         <h1 style="font-size:18px">WorkspaceHelper</h1>
       </div>
-      <span id="pc_pill" class="pill" style="background:#1A1D25;color:var(--muted)"><span class="dot" style="background:var(--muted)"></span><span id="pc_pill_t">—</span></span>
+      <span id="pc_pill" class="pill" style="background:var(--chip);color:var(--muted)"><span class="dot" style="background:var(--muted)"></span><span id="pc_pill_t">—</span></span>
     </div>
 
-    <div class="card" style="background:linear-gradient(160deg,#1B1F29,#15181F)">
+    <div class="card" style="background:linear-gradient(160deg,var(--hero1),var(--hero2))">
       <div class="row" style="align-items:flex-start">
         <div>
           <div class="label">DeskTime</div>
@@ -112,7 +109,7 @@
         </div>
       </div>
       <div style="margin-top:16px">
-        <div class="row" style="font-size:11.5px"><span class="muted" data-t="productivity"></span><span id="dt_prod" style="color:#6EE7B7;font-weight:600">—</span></div>
+        <div class="row" style="font-size:11.5px"><span class="muted" data-t="productivity"></span><span id="dt_prod" style="color:var(--greentext);font-weight:600">—</span></div>
         <div class="bar"><span id="dt_prod_bar" style="width:0%"></span></div>
       </div>
     </div>
@@ -166,18 +163,18 @@
   <!-- HOURS -->
   <section id="s_hours" class="screen hidden">
     <h1 data-t="desktime_hours"></h1>
-    <div class="card" style="background:linear-gradient(160deg,#1B1F29,#15181F)">
+    <div class="card" style="background:linear-gradient(160deg,var(--hero1),var(--hero2))">
       <div class="row" style="align-items:flex-end">
         <div><div class="label" data-t="time_worked"></div><div id="h_total" class="big" style="font-size:36px;margin-top:4px">—</div></div>
-        <div style="text-align:right"><div class="muted" style="font-size:11.5px" data-t="effectiveness"></div><div id="h_eff" class="big" style="font-size:22px;color:#6EE7B7">—</div></div>
+        <div style="text-align:right"><div class="muted" style="font-size:11.5px" data-t="effectiveness"></div><div id="h_eff" class="big" style="font-size:22px;color:var(--greentext)">—</div></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <div class="card" style="flex:1;margin:0;background:#12151C"><div class="muted" style="font-size:11px" data-t="arrived"></div><div id="h_arr" style="font-weight:600;margin-top:2px">—</div></div>
-        <div class="card" style="flex:1;margin:0;background:#12151C"><div class="muted" style="font-size:11px" data-t="left"></div><div id="h_left" style="font-weight:600;margin-top:2px">—</div></div>
+        <div class="card" style="flex:1;margin:0;background:var(--card2)"><div class="muted" style="font-size:11px" data-t="arrived"></div><div id="h_arr" style="font-weight:600;margin-top:2px">—</div></div>
+        <div class="card" style="flex:1;margin:0;background:var(--card2)"><div class="muted" style="font-size:11px" data-t="left"></div><div id="h_left" style="font-weight:600;margin-top:2px">—</div></div>
       </div>
     </div>
     <div class="card">
-      <div class="row"><span style="font-weight:600;font-size:13px" data-t="productivity"></span><span id="h_prod" style="color:#6EE7B7;font-weight:600">—</span></div>
+      <div class="row"><span style="font-weight:600;font-size:13px" data-t="productivity"></span><span id="h_prod" style="color:var(--greentext);font-weight:600">—</span></div>
       <div class="bar"><span id="h_prod_bar" style="width:0%"></span></div>
     </div>
     <div class="card"><div style="font-weight:600;font-size:13px;margin-bottom:6px" data-t="projects"></div><div id="proj_list" class="list"></div></div>
@@ -200,6 +197,11 @@
   <!-- SETTINGS -->
   <section id="s_settings" class="screen hidden">
     <h1 data-t="settings"></h1>
+
+    <div class="card">
+      <div style="font-weight:600;font-size:13px" data-t="appearance"></div>
+      <div class="seg"><button id="th_dark" onclick="setTheme('dark')" data-t="dark"></button><button id="th_light" onclick="setTheme('light')" data-t="light"></button></div>
+    </div>
 
     <div class="card">
       <div style="font-weight:600;font-size:13px" data-t="device"></div>
@@ -247,7 +249,7 @@
 
     <div class="card">
       <div style="font-weight:600;font-size:13px" data-t="connection"></div>
-      <div class="row" style="margin-top:10px"><span class="muted" style="font-size:12.5px" data-t="fb_link"></span><span id="conn_state" class="pill" style="background:#12261B;color:#6EE7B7"><span class="dot" style="background:var(--green)"></span><span data-t="connected"></span></span></div>
+      <div class="row" style="margin-top:10px"><span class="muted" style="font-size:12.5px" data-t="fb_link"></span><span id="conn_state" class="pill" style="background:var(--greenpill);color:var(--greentext)"><span class="dot" style="background:var(--green)"></span><span data-t="connected"></span></span></div>
       <button class="btn btn-ghost btn-wide" style="margin-top:12px" onclick="editConnection()" data-t="edit_connection"></button>
     </div>
   </section>
@@ -273,7 +275,7 @@ const T = {
     capture:"Capture screen",last_capture:"Last capture",no_capture:"No capture yet.",settings:"Settings",device:"Device",language:"Language",require_fp:"Fingerprint for DeskTime",
     fp_sub:"Confirm before start/stop",on:"On",auto_shutdown:"Auto shutdown",set:"Set",cancel:"Cancel",app_version:"App version",check_updates:"Check",connection:"Connection",
     fb_link:"Firebase link",connected:"Connected",edit_connection:"Edit connection",home:"Home",hours:"Hours",online:"PC online",offline:"PC offline",
-    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device",routines:"Scheduled routines",add_routine:"Add routine",no_routines:"No routines yet",close:"Close",tap_expand:"Tap to open full-size",done:"Done",up_to_date:"You're up to date",updated:"Updated",ago:"ago",days_hint:"Leave days unselected to run every day"},
+    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device",routines:"Scheduled routines",add_routine:"Add routine",no_routines:"No routines yet",close:"Close",tap_expand:"Tap to open full-size",done:"Done",up_to_date:"You're up to date",updated:"Updated",ago:"ago",days_hint:"Leave days unselected to run every day",appearance:"Appearance",dark:"Dark",light:"Light"},
   es:{setup_intro:"Introduce tu conexión de Firebase para enlazar la app con tu PC.",fb_url:"URL de Firebase",fb_secret:"Secreto de Firebase",connect:"Conectar",
     unknown:"Desconocido",worked_today:"trabajado hoy",productivity:"Productividad",controls:"Controles",desktime_proc:"Proceso de DeskTime",open_close:"Abrir o cerrar el seguimiento",
     start:"Iniciar",stop:"Detener",mouse_helper:"Asistente de ratón · F9",keeps_active:"Mantiene la PC activa",off:"Apagado",confirm_screen:"Confirmar estado de pantalla",panic:"Pánico · detener todo",
@@ -282,7 +284,7 @@ const T = {
     capture:"Capturar pantalla",last_capture:"Última captura",no_capture:"Aún no hay captura.",settings:"Ajustes",device:"Dispositivo",language:"Idioma",require_fp:"Huella para DeskTime",
     fp_sub:"Confirmar antes de iniciar/detener",on:"Sí",auto_shutdown:"Apagado automático",set:"Fijar",cancel:"Cancelar",app_version:"Versión de la app",check_updates:"Buscar",connection:"Conexión",
     fb_link:"Enlace Firebase",connected:"Conectado",edit_connection:"Editar conexión",home:"Inicio",hours:"Horas",online:"PC en línea",offline:"PC sin conexión",
-    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo",routines:"Rutinas programadas",add_routine:"Añadir rutina",no_routines:"Aún no hay rutinas",close:"Cerrar",tap_expand:"Toca para ver en grande",done:"Hecho",up_to_date:"Ya estás al día",updated:"Actualizado",ago:"atrás",days_hint:"Sin días seleccionados se ejecuta todos los días"}
+    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo",routines:"Rutinas programadas",add_routine:"Añadir rutina",no_routines:"Aún no hay rutinas",close:"Cerrar",tap_expand:"Toca para ver en grande",done:"Hecho",up_to_date:"Ya estás al día",updated:"Actualizado",ago:"atrás",days_hint:"Sin días seleccionados se ejecuta todos los días",appearance:"Apariencia",dark:"Oscuro",light:"Claro"}
 };
 let lang = localStorage.getItem('lang') || 'en';
 function t(k){return (T[lang]&&T[lang][k])||k;}
@@ -294,6 +296,13 @@ function applyLang(){
   fillActionSelect();fillDayChips();
 }
 function setLang(l){lang=l;localStorage.setItem('lang',l);applyLang();}
+function setTheme(mode){
+  document.body.classList.toggle('light',mode==='light');
+  localStorage.setItem('theme',mode);
+  const d=document.getElementById('th_dark'),l=document.getElementById('th_light');
+  if(d)d.classList.toggle('on',mode!=='light');
+  if(l)l.classList.toggle('on',mode==='light');
+}
 
 // ---------------- config ----------------
 let cfg = JSON.parse(localStorage.getItem('cfg')||'null');
@@ -362,8 +371,8 @@ function confirmDesktime(action){
   if(!fpOn){send(action==='start'?'desktime_start':'desktime_stop');return;}
   if(window.Android&&Android.authenticate){Android.authenticate(action);return;}
   const ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML='<div class="modal"><div style="width:54px;height:54px;border-radius:16px;margin:0 auto;background:'+(action==='stop'?'#2A1619':'#10271F')+';display:flex;align-items:center;justify-content:center">'
-    +'<svg width="26" height="26" viewBox="0 0 24 24" class="svc" style="stroke:'+(action==='stop'?'#FB7185':'#34D399')+'"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg></div>'
+  ov.innerHTML='<div class="modal"><div style="width:54px;height:54px;border-radius:16px;margin:0 auto;background:'+(action==='stop'?'var(--rosebg)':'var(--greenbg)')+';display:flex;align-items:center;justify-content:center">'
+    +'<svg width="26" height="26" viewBox="0 0 24 24" class="svc" style="stroke:'+(action==='stop'?'var(--rose)':'var(--green)')+'"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg></div>'
     +'<div style="font-size:20px;font-weight:700;margin-top:14px">'+t(action==='stop'?'confirm_close':'confirm_open')+'</div>'
     +'<div class="muted" style="font-size:13px;margin-top:7px">'+t('confirm_body')+'</div>'
     +'<button class="btn btn-accent btn-wide" style="margin-top:18px">'+t('confirm')+'</button>'
@@ -398,7 +407,7 @@ async function refresh(){
   const pill=document.getElementById('pc_pill');
   document.getElementById('pc_pill_t').textContent = online? t('online'):t('offline');
   pill.querySelector('.dot').style.background = online? 'var(--green)':'var(--rose)';
-  pill.style.color = online? '#6EE7B7':'var(--rose)';
+  pill.style.color = online? 'var(--greentext)':'var(--rose)';
 
   const ls=document.getElementById('last_seen');
   if(ls){
@@ -438,11 +447,11 @@ function renderProjects(list){
 }
 function renderApps(list){
   const el=document.getElementById('apps_list');el.innerHTML='';
-  const col={productive:'#34D399',neutral:'#6B7280',unproductive:'#FB7185'};
+  const col={productive:'var(--green)',neutral:'var(--muted3)',unproductive:'var(--rose)'};
   if(!list.length){el.innerHTML='<div class="muted" style="font-size:12.5px;padding:8px 0">—</div>';return;}
   list.slice(0,8).forEach(a=>{
     const d=document.createElement('div');d.className='it';
-    d.innerHTML='<span class="dot" style="background:'+(col[a.productivity]||'#6B7280')+'"></span><span style="flex:1;font-size:13.5px">'+esc(a.name||'—')+'</span><span class="muted" style="font-size:12.5px">'+hms(a.duration)+'</span>';
+    d.innerHTML='<span class="dot" style="background:'+(col[a.productivity]||'var(--muted3)')+'"></span><span style="flex:1;font-size:13.5px">'+esc(a.name||'—')+'</span><span class="muted" style="font-size:12.5px">'+hms(a.duration)+'</span>';
     el.appendChild(d);
   });
 }
@@ -541,6 +550,7 @@ async function deleteRoutine(k){try{await fetch(fbUrl('devices/'+deviceId+'/rout
 // ---------------- boot ----------------
 async function boot(){
   applyLang();
+  setTheme(localStorage.getItem('theme')||'dark');
   if(window.Android&&Android.appVersion){try{document.getElementById('ver_line').textContent='v'+Android.appVersion();}catch(e){}}
   if(!cfg){document.getElementById('setup').classList.remove('hidden');document.getElementById('app').classList.add('hidden');return;}
   document.getElementById('setup').classList.add('hidden');
