@@ -57,6 +57,16 @@ public class MainActivity extends FragmentActivity {
         public void installUpdate(final String url) {
             new Thread(() -> downloadAndInstall(url)).start();
         }
+
+        @JavascriptInterface
+        public String appVersion() {
+            return BuildConfig.VERSION_NAME;
+        }
+    }
+
+    private void updateProgress(final int pct) {
+        runOnUiThread(() ->
+            web.evaluateJavascript("window.onUpdateProgress&&window.onUpdateProgress(" + pct + ")", null));
     }
 
     private void callAuth(String action, boolean ok) {
@@ -101,14 +111,28 @@ public class MainActivity extends FragmentActivity {
             c.setInstanceFollowRedirects(true);
             c.setConnectTimeout(20000);
             c.setReadTimeout(60000);
+            int total = c.getContentLength();
             InputStream in = c.getInputStream();
             FileOutputStream fo = new FileOutputStream(out);
             byte[] buf = new byte[8192];
             int n;
-            while ((n = in.read(buf)) > 0) fo.write(buf, 0, n);
+            long read = 0;
+            int lastPct = -1;
+            while ((n = in.read(buf)) > 0) {
+                fo.write(buf, 0, n);
+                read += n;
+                if (total > 0) {
+                    int pct = (int) (read * 100 / total);
+                    if (pct != lastPct && pct % 2 == 0) {
+                        lastPct = pct;
+                        updateProgress(pct);
+                    }
+                }
+            }
             fo.close();
             in.close();
             c.disconnect();
+            updateProgress(100);
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", out);
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.setDataAndType(uri, "application/vnd.android.package-archive");

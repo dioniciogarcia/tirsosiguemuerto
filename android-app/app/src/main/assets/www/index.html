@@ -453,12 +453,28 @@ function openScreenshot(){
   close.onclick=()=>ov.remove();bar.appendChild(close);
   ov.appendChild(scroll);ov.appendChild(bar);document.body.appendChild(ov);
 }
+let updOverlay=null;
 function checkUpdate(){
-  if(window.Android&&Android.installUpdate){toast(lang==='es'?'Descargando…':'Downloading…');Android.installUpdate(APK_URL);}
+  if(window.Android&&Android.installUpdate){showUpdateProgress();Android.installUpdate(APK_URL);}
   else{window.open(RELEASES,'_blank');}
 }
+function showUpdateProgress(){
+  if(updOverlay)return;
+  const ov=document.createElement('div');ov.className='overlay';ov.style.zIndex='80';
+  ov.innerHTML='<div class="modal"><div id="upd_title" style="font-weight:700;font-size:16px">'+(lang==='es'?'Descargando actualización…':'Downloading update…')+'</div>'
+    +'<div class="bar" style="margin-top:16px;height:10px"><span id="upd_bar" style="width:0%"></span></div>'
+    +'<div id="upd_pct" class="muted" style="font-size:12.5px;margin-top:8px">0%</div></div>';
+  document.body.appendChild(ov);updOverlay=ov;
+}
+window.onUpdateProgress=function(p){
+  if(!updOverlay)return;
+  const bar=updOverlay.querySelector('#upd_bar'),pct=updOverlay.querySelector('#upd_pct');
+  if(bar)bar.style.width=p+'%';if(pct)pct.textContent=p+'%';
+  if(p>=100){const tl=updOverlay.querySelector('#upd_title');if(tl)tl.textContent=(lang==='es'?'Abriendo instalador…':'Opening installer…');
+    setTimeout(()=>{if(updOverlay){updOverlay.remove();updOverlay=null;}},1800);}
+};
+window.onUpdateFailed=function(){if(updOverlay){updOverlay.remove();updOverlay=null;}toast('✕');};
 window.onAuth=function(action,ok){if(ok)send(action==='start'?'desktime_start':'desktime_stop');else toast('✕');};
-window.onUpdateFailed=function(){toast('✕');};
 
 // ---------------- routines ----------------
 const R_ACTIONS=[['desktime_open','Open DeskTime','Abrir DeskTime'],['desktime_close','Close DeskTime','Cerrar DeskTime'],['mouse_start','Mouse helper 1h','Asistente ratón 1h'],['shutdown','Shut down PC','Apagar PC']];
@@ -485,6 +501,7 @@ async function deleteRoutine(k){try{await fetch(fbUrl('devices/'+deviceId+'/rout
 // ---------------- boot ----------------
 async function boot(){
   applyLang();
+  if(window.Android&&Android.appVersion){try{document.getElementById('ver_line').textContent='v'+Android.appVersion();}catch(e){}}
   if(!cfg){document.getElementById('setup').classList.remove('hidden');document.getElementById('app').classList.add('hidden');return;}
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
