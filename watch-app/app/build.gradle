@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 android {
@@ -7,25 +8,37 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.workspacehelper.watch"
+        // MUST equal the phone app's applicationId so the Wearable Data Layer
+        // delivers messages between them, and both are signed with the same key.
+        applicationId "com.workspacehelper.app.preview"
         minSdk 26
         targetSdk 34
-        versionCode 3
-        versionName "1.2.0"
-
-        // Baked in at build time from the FIREBASE_SECRET GitHub secret, so the
-        // watch connects with no typing. Empty when not provided -> the watch
-        // falls back to the manual Setup screen.
-        buildConfigField "String", "FIREBASE_SECRET", "\"${System.getenv('FIREBASE_SECRET') ?: ''}\""
+        versionCode 4
+        versionName "2.0.0"
+        vectorDrawables { useSupportLibrary true }
     }
 
     buildFeatures {
-        buildConfig true
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.14'
+    }
+
+    signingConfigs {
+        shared {
+            storeFile file('wh-signing.keystore')
+            storePassword 'workspacehelper'
+            keyAlias 'wh'
+            keyPassword 'workspacehelper'
+        }
     }
 
     buildTypes {
+        debug { signingConfig signingConfigs.shared }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.shared
         }
     }
 
@@ -33,4 +46,30 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24'
+    }
+}
+
+dependencies {
+    def composeBom = platform('androidx.compose:compose-bom:2024.06.00')
+    implementation composeBom
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.activity:activity-compose:1.9.0'
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.wear.compose:compose-material:1.3.1'
+    implementation 'androidx.wear.compose:compose-foundation:1.3.1'
+
+    implementation 'com.google.android.gms:play-services-wearable:18.2.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
 }

@@ -11,8 +11,8 @@ android {
         applicationId "com.workspacehelper.app.preview"
         minSdk 24
         targetSdk 34
-        versionCode 109
-        versionName "2.5.2"
+        versionCode 110
+        versionName "2.6.0"
         vectorDrawables { useSupportLibrary true }
     }
 
@@ -73,4 +73,5 @@ dependencies {
 
     implementation 'androidx.biometric:biometric:1.1.0'
     implementation 'androidx.work:work-runtime:2.9.1'
+    implementation 'com.google.android.gms:play-services-wearable:18.2.0'
 }

@@ -62,6 +62,7 @@ object Lang {
 // -------- data access --------
 object Repo {
     lateinit var prefs: SharedPreferences
+    fun isReady() = ::prefs.isInitialized
     fun url() = prefs.getString("url", "") ?: ""
     fun secret() = prefs.getString("secret", "") ?: ""
     fun deviceId() = prefs.getString("deviceId", "") ?: ""

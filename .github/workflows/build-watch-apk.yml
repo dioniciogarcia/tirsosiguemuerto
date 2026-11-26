@@ -2,7 +2,7 @@ name: Build WorkspaceHelper Watch APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, native-rewrite ]
     paths:
       - 'watch-app/**'
       - '.github/workflows/build-watch-apk.yml'
@@ -44,8 +44,6 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build debug APK
-        env:
-          FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Rename APK
