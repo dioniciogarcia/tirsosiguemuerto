@@ -11,8 +11,8 @@ android {
         applicationId "com.workspacehelper.app.preview"
         minSdk 24
         targetSdk 34
-        versionCode 103
-        versionName "2.1.0-native"
+        versionCode 104
+        versionName "2.2.0-native"
         vectorDrawables { useSupportLibrary true }
     }
 

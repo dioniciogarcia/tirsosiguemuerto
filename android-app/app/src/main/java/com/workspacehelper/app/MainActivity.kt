@@ -51,6 +51,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
+// -------- language --------
+object Lang {
+    var code by mutableStateOf("en")
+    fun load() { code = Repo.prefs.getString("lang", "en") ?: "en" }
+    fun set(c: String) { code = c; Repo.prefs.edit().putString("lang", c).apply() }
+    fun t(en: String, es: String) = if (code == "es") es else en
+}
+
 // -------- data access --------
 object Repo {
     lateinit var prefs: SharedPreferences
@@ -144,6 +152,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Repo.prefs = getSharedPreferences("wh", Context.MODE_PRIVATE)
+        Lang.load()
         setContent {
             var dark by remember { mutableStateOf(Repo.prefs.getString("theme", "dark") != "light") }
             WhTheme(dark) {
@@ -176,12 +185,12 @@ fun AppRoot(dark: Boolean, onTheme: (Boolean) -> Unit) {
     fun toast(m: String) = android.widget.Toast.makeText(ctx, m, android.widget.Toast.LENGTH_SHORT).show()
     val cmd: (String, String) -> Unit = { type, args ->
         scope.launch {
-            toast("Sent")
+            toast(Lang.t("Sent", "Enviado"))
             val key = Repo.send(type, args)
             if (key != null) {
                 repeat(6) {
                     delay(1500)
-                    if (Repo.getAck()?.optString("key") == key) { toast("✓ Done"); return@launch }
+                    if (Repo.getAck()?.optString("key") == key) { toast(Lang.t("✓ Done", "✓ Listo")); return@launch }
                 }
             }
         }
@@ -196,11 +205,11 @@ fun AppRoot(dark: Boolean, onTheme: (Boolean) -> Unit) {
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(selected = tab == 0, onClick = { tab = 0 },
-                    icon = { Icon(Icons.Filled.Home, null) }, label = { Text("Home") })
+                    icon = { Icon(Icons.Filled.Home, null) }, label = { Text(Lang.t("Home", "Inicio")) })
                 NavigationBarItem(selected = tab == 1, onClick = { tab = 1 },
-                    icon = { Icon(Icons.Filled.BarChart, null) }, label = { Text("Hours") })
+                    icon = { Icon(Icons.Filled.BarChart, null) }, label = { Text(Lang.t("Hours", "Horas")) })
                 NavigationBarItem(selected = tab == 2, onClick = { tab = 2 },
-                    icon = { Icon(Icons.Filled.Settings, null) }, label = { Text("Settings") })
+                    icon = { Icon(Icons.Filled.Settings, null) }, label = { Text(Lang.t("Settings", "Ajustes")) })
             }
         }
     ) { pad ->
@@ -226,13 +235,14 @@ fun SetupScreen(onDone: () -> Unit) {
         Spacer(Modifier.height(40.dp))
         Text("WorkspaceHelper", fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
-        Text("Enter your Firebase connection to link to your PC.",
+        Text(Lang.t("Enter your Firebase connection to link to your PC.",
+            "Ingresa tu conexión de Firebase para enlazar tu PC."),
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, fontSize = 13.sp)
         Spacer(Modifier.height(20.dp))
-        OutlinedTextField(url, { url = it }, label = { Text("Firebase URL") },
+        OutlinedTextField(url, { url = it }, label = { Text(Lang.t("Firebase URL", "URL de Firebase")) },
             singleLine = true, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(secret, { secret = it }, label = { Text("Firebase secret") },
+        OutlinedTextField(secret, { secret = it }, label = { Text(Lang.t("Firebase secret", "Secreto de Firebase")) },
             singleLine = true, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(20.dp))
         Button(
@@ -243,7 +253,7 @@ fun SetupScreen(onDone: () -> Unit) {
                 }
             },
             modifier = Modifier.fillMaxWidth().height(50.dp)
-        ) { Text("Connect") }
+        ) { Text(Lang.t("Connect", "Conectar")) }
     }
 }
 
@@ -271,7 +281,7 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit, cmdAuth: (Str
             ) { Icon(Icons.Filled.PowerSettingsNew, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
             Spacer(Modifier.width(10.dp))
             Text("WorkspaceHelper", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            StatusChip(if (online) "PC online" else "PC offline", if (online) Green else Rose)
+            StatusChip(if (online) Lang.t("PC online", "PC en línea") else Lang.t("PC offline", "PC desconectada"), if (online) Green else Rose)
         }
         Spacer(Modifier.height(12.dp))
 
@@ -287,16 +297,16 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit, cmdAuth: (Str
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Dot(if (running) Green else muted)
                 Spacer(Modifier.width(8.dp))
-                Text(if (running) "Running" else "Stopped", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                Text(if (running) Lang.t("Running", "Activo") else Lang.t("Stopped", "Detenido"), fontSize = 21.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.End) {
                     Text(hms(total), fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text("worked today", fontSize = 10.sp, color = muted)
+                    Text(Lang.t("worked today", "trabajado hoy"), fontSize = 10.sp, color = muted)
                 }
             }
             Spacer(Modifier.height(11.dp))
             Row(Modifier.fillMaxWidth()) {
-                Text("Productivity", fontSize = 12.sp, color = muted, modifier = Modifier.weight(1f))
+                Text(Lang.t("Productivity", "Productividad"), fontSize = 12.sp, color = muted, modifier = Modifier.weight(1f))
                 Text("${prod.toInt()}%", fontSize = 12.sp, color = GreenText, fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.height(6.dp))
@@ -307,19 +317,19 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit, cmdAuth: (Str
             )
         }
         Spacer(Modifier.height(12.dp))
-        Text("CONTROLS", fontSize = 11.sp, letterSpacing = 1.5.sp, color = muted, fontWeight = FontWeight.SemiBold)
+        Text(Lang.t("CONTROLS", "CONTROLES"), fontSize = 11.sp, letterSpacing = 1.5.sp, color = muted, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
 
         ControlCard(
-            title = "DeskTime process", subtitle = "Open or close tracking",
+            title = Lang.t("DeskTime process", "Proceso DeskTime"), subtitle = Lang.t("Open or close tracking", "Abrir o cerrar seguimiento"),
             icon = Icons.Filled.PowerSettingsNew, iconBg = Color(0xFF201C33), iconTint = Violet2,
-            onStart = { cmdAuth("desktime_start", "{}", "Confirm opening DeskTime") },
-            onStop = { cmdAuth("desktime_stop", "{}", "Confirm closing DeskTime") },
+            onStart = { cmdAuth("desktime_start", "{}", Lang.t("Confirm opening DeskTime", "Confirma abrir DeskTime")) },
+            onStop = { cmdAuth("desktime_stop", "{}", Lang.t("Confirm closing DeskTime", "Confirma cerrar DeskTime")) },
             onTimer = { m -> cmd("desktime_timer", """{"minutes":$m,"direction":"open_then_close"}""") }
         )
         Spacer(Modifier.height(9.dp))
         ControlCard(
-            title = "Mouse helper · F9", subtitle = "Keeps the PC active",
+            title = Lang.t("Mouse helper · F9", "Asistente de ratón · F9"), subtitle = Lang.t("Keeps the PC active", "Mantiene la PC activa"),
             icon = Icons.Filled.Mouse, iconBg = Color(0xFF122A24), iconTint = Green,
             onStart = { cmd("mouse_start", """{"minutes":0}""") }, onStop = { cmd("mouse_stop", "{}") },
             onTimer = { m -> cmd("mouse_start", """{"minutes":$m}""") }
@@ -332,13 +342,14 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit, cmdAuth: (Str
             onClick = { cmd("panic", "{}") },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A1619), contentColor = Rose),
             modifier = Modifier.fillMaxWidth().height(46.dp)
-        ) { Text("Panic · stop everything", fontWeight = FontWeight.SemiBold) }
+        ) { Text(Lang.t("Panic · stop everything", "Pánico · detener todo"), fontWeight = FontWeight.SemiBold) }
 
         if (ts > 0) {
             val age = (System.currentTimeMillis() / 1000 - ts).coerceAtLeast(0)
+            val ageTxt = if (age < 60) "${age}s" else "${age / 60}m"
             Spacer(Modifier.height(10.dp))
             Text(
-                "Updated " + (if (age < 60) "${age}s" else "${age / 60}m") + " ago",
+                Lang.t("Updated $ageTxt ago", "Actualizado hace $ageTxt"),
                 fontSize = 11.sp, color = muted, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
             )
         }
@@ -366,12 +377,12 @@ fun ControlCard(
                 FilledTonalButton(onClick = onStart,
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF10271F), contentColor = Green),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                ) { Text("Start") }
+                ) { Text(Lang.t("Start", "Iniciar")) }
                 Spacer(Modifier.width(7.dp))
                 FilledTonalButton(onClick = onStop,
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF2A1619), contentColor = Rose),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                ) { Text("Stop") }
+                ) { Text(Lang.t("Stop", "Detener")) }
             }
             Spacer(Modifier.height(8.dp))
             Row {
@@ -408,7 +419,7 @@ fun ScreenshotButton() {
         modifier = Modifier.fillMaxWidth().height(46.dp)
     ) {
         if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-        else Text("Capture screen")
+        else Text(Lang.t("Capture screen", "Capturar pantalla"))
     }
     if (show && b64 != null) ScreenshotViewer(b64!!) { show = false }
 }
@@ -437,9 +448,9 @@ fun ScreenshotViewer(b64: String, onClose: () -> Unit) {
                         }
                 )
             } else {
-                Text("Could not load image", color = Color.White, modifier = Modifier.padding(24.dp))
+                Text(Lang.t("Could not load image", "No se pudo cargar la imagen"), color = Color.White, modifier = Modifier.padding(24.dp))
             }
-            FilledTonalButton(onClick = onClose, modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp)) { Text("Close") }
+            FilledTonalButton(onClick = onClose, modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp)) { Text(Lang.t("Close", "Cerrar")) }
         }
     }
 }
@@ -454,11 +465,11 @@ fun HoursScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
     val scope = rememberCoroutineScope()
     val h = if (selDate == today) status?.optJSONObject("hours") else histHours
     val dates = remember { (0..6).map { dateStr(it) } }
-    fun label(d: String) = when (d) { today -> "Today"; dateStr(1) -> "Yesterday"; else -> d }
+    fun label(d: String) = when (d) { today -> Lang.t("Today", "Hoy"); dateStr(1) -> Lang.t("Yesterday", "Ayer"); else -> d }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("DeskTime hours", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(Lang.t("DeskTime hours", "Horas de DeskTime"), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             Box {
                 FilledTonalButton(onClick = { expanded = true },
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
@@ -490,18 +501,18 @@ fun HoursScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
             verticalAlignment = Alignment.Bottom
         ) {
             Column(Modifier.weight(1f)) {
-                Text("TIME WORKED", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Lang.t("TIME WORKED", "TIEMPO TRABAJADO"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(hms(h?.optLong("desktimeTime") ?: 0), fontSize = 36.sp, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("Effectiveness", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Lang.t("Effectiveness", "Efectividad"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${(h?.optDouble("efficiency") ?: 0.0).toInt()}%", fontSize = 20.sp, color = GreenText, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionList("Projects", h?.optJSONArray("projects"), project = true, date = selDate)
+        SectionList(Lang.t("Projects", "Proyectos"), h?.optJSONArray("projects"), project = true, date = selDate)
         Spacer(Modifier.height(14.dp))
-        SectionList("Top apps", h?.optJSONArray("apps"), project = false, date = selDate)
+        SectionList(Lang.t("Top apps", "Apps principales"), h?.optJSONArray("apps"), project = false, date = selDate)
     }
 }
 
@@ -530,9 +541,9 @@ fun SectionList(title: String, arr: org.json.JSONArray?, project: Boolean, date:
                                 val text = "$name - [start] - [end]\n(${hms(dur)} on $date)\n* Ticket #"
                                 val send = android.content.Intent(android.content.Intent.ACTION_SEND)
                                 send.type = "text/plain"; send.putExtra(android.content.Intent.EXTRA_TEXT, text)
-                                ctx.startActivity(android.content.Intent.createChooser(send, "Share"))
+                                ctx.startActivity(android.content.Intent.createChooser(send, Lang.t("Share", "Compartir")))
                             }, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Filled.Share, "Share", modifier = Modifier.size(17.dp),
+                                Icon(Icons.Filled.Share, Lang.t("Share", "Compartir"), modifier = Modifier.size(17.dp),
                                     tint = MaterialTheme.colorScheme.primary)
                             }
                         }
@@ -561,17 +572,17 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-        Text("Settings", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(Lang.t("Settings", "Ajustes"), fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
 
         Card(shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(16.dp)) {
-                Text("Appearance", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(Lang.t("Language", "Idioma"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(10.dp))
                 Row {
-                    SegButton("Dark", dark, Modifier.weight(1f)) { onTheme(true) }
+                    SegButton("English", Lang.code == "en", Modifier.weight(1f)) { Lang.set("en") }
                     Spacer(Modifier.width(8.dp))
-                    SegButton("Light", !dark, Modifier.weight(1f)) { onTheme(false) }
+                    SegButton("Español", Lang.code == "es", Modifier.weight(1f)) { Lang.set("es") }
                 }
             }
         }
@@ -579,7 +590,20 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
 
         Card(shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(16.dp)) {
-                Text("Device", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(Lang.t("Appearance", "Apariencia"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(10.dp))
+                Row {
+                    SegButton(Lang.t("Dark", "Oscuro"), dark, Modifier.weight(1f)) { onTheme(true) }
+                    Spacer(Modifier.width(8.dp))
+                    SegButton(Lang.t("Light", "Claro"), !dark, Modifier.weight(1f)) { onTheme(false) }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        Card(shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(16.dp)) {
+                Text(Lang.t("Device", "Dispositivo"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
                 Box {
                     OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
@@ -597,11 +621,11 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
         }
         Spacer(Modifier.height(12.dp))
 
-        ToggleCard("Fingerprint for DeskTime", "Confirm before start/stop", fp) {
+        ToggleCard(Lang.t("Fingerprint for DeskTime", "Huella para DeskTime"), Lang.t("Confirm before start/stop", "Confirmar antes de iniciar/detener"), fp) {
             fp = it; Repo.prefs.edit().putBoolean("fp", it).apply()
         }
         Spacer(Modifier.height(12.dp))
-        ToggleCard("PC offline alerts", "Notify when the PC goes offline", notif) {
+        ToggleCard(Lang.t("PC offline alerts", "Alertas de PC desconectada"), Lang.t("Notify when the PC goes offline", "Avisar cuando la PC se desconecte"), notif) {
             notif = it; Repo.prefs.edit().putBoolean("notif_enabled", it).apply()
             try {
                 if (it) {
@@ -622,11 +646,11 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
 
         Card(shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(16.dp)) {
-                Text("Connection", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(Lang.t("Connection", "Conexión"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(10.dp))
                 OutlinedButton(onClick = {
                     Repo.prefs.edit().remove("url").remove("secret").apply(); onEditConnection()
-                }, modifier = Modifier.fillMaxWidth()) { Text("Edit connection") }
+                }, modifier = Modifier.fillMaxWidth()) { Text(Lang.t("Edit connection", "Editar conexión")) }
             }
         }
     }
@@ -652,10 +676,10 @@ fun RoutinesCard() {
     var days by remember { mutableStateOf(setOf<Int>()) }
     var actionExpanded by remember { mutableStateOf(false) }
     val actions = listOf(
-        "desktime_open" to "Open DeskTime",
-        "desktime_close" to "Close DeskTime",
-        "mouse_start" to "Mouse helper 1h",
-        "shutdown" to "Shut down PC")
+        "desktime_open" to Lang.t("Open DeskTime", "Abrir DeskTime"),
+        "desktime_close" to Lang.t("Close DeskTime", "Cerrar DeskTime"),
+        "mouse_start" to Lang.t("Mouse helper 1h", "Asistente ratón 1h"),
+        "shutdown" to Lang.t("Shut down PC", "Apagar PC"))
     val dayLetters = listOf("M", "T", "W", "T", "F", "S", "S")
     fun actionLabel(a: String) = actions.firstOrNull { it.first == a }?.second ?: a
     fun reload() { scope.launch { routines = Repo.getRoutines() } }
@@ -664,16 +688,17 @@ fun RoutinesCard() {
     Card(shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Scheduled routines", fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                Text(Lang.t("Scheduled routines", "Rutinas programadas"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f))
                 IconButton(onClick = { showAdd = !showAdd }) {
                     Icon(if (showAdd) Icons.Filled.Close else Icons.Filled.Add,
-                        contentDescription = "Add routine")
+                        contentDescription = Lang.t("Add routine", "Agregar rutina"))
                 }
             }
             val r = routines
             if (r == null || r.length() == 0) {
-                Text("No routines yet. The PC runs these automatically.",
+                Text(Lang.t("No routines yet. The PC runs these automatically.",
+                    "Sin rutinas aún. La PC las ejecuta automáticamente."),
                     fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 r.keys().asSequence().toList().forEach { k ->
@@ -682,7 +707,7 @@ fun RoutinesCard() {
                     val daysArr = o.optJSONArray("days")
                     val daysTxt = if (daysArr != null && daysArr.length() > 0)
                         " · " + (0 until daysArr.length()).joinToString("") {
-                            dayLetters.getOrElse(daysArr.optInt(it)) { "?" } } else " · daily"
+                            dayLetters.getOrElse(daysArr.optInt(it)) { "?" } } else " · " + Lang.t("daily", "diario")
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Text(o.optString("time") + "  " + actionLabel(o.optString("type")) + daysTxt,
@@ -694,7 +719,7 @@ fun RoutinesCard() {
                             modifier = Modifier.scale(0.8f))
                         IconButton(onClick = { scope.launch { Repo.deleteRoutine(k); reload() } },
                             modifier = Modifier.size(34.dp)) {
-                            Icon(Icons.Filled.Delete, "Delete",
+                            Icon(Icons.Filled.Delete, Lang.t("Delete", "Eliminar"),
                                 modifier = Modifier.size(18.dp), tint = Rose)
                         }
                     }
@@ -737,7 +762,8 @@ fun RoutinesCard() {
                             modifier = Modifier.weight(1f).padding(end = if (i < 6) 3.dp else 0.dp))
                     }
                 }
-                Text(if (days.isEmpty()) "No days selected = every day" else "Repeats on selected days",
+                Text(if (days.isEmpty()) Lang.t("No days selected = every day", "Sin días = todos los días")
+                    else Lang.t("Repeats on selected days", "Se repite los días elegidos"),
                     fontSize = 10.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp))
                 Spacer(Modifier.height(8.dp))
@@ -747,7 +773,7 @@ fun RoutinesCard() {
                     val minutes = if (action == "mouse_start") ""","minutes":60""" else ""
                     val body = """{"type":"$action","time":"$time","enabled":true$daysJson$minutes}"""
                     scope.launch { Repo.addRoutine(body); days = emptySet(); showAdd = false; reload() }
-                }, modifier = Modifier.fillMaxWidth()) { Text("Add routine") }
+                }, modifier = Modifier.fillMaxWidth()) { Text(Lang.t("Add routine", "Agregar rutina")) }
             }
         }
     }
