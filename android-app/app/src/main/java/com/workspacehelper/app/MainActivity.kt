@@ -23,10 +23,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -69,9 +72,15 @@ object Repo {
         } catch (e: Exception) { emptyList() }
     }
 
-    suspend fun send(type: String, args: String = "{}") = withContext(Dispatchers.IO) {
+    suspend fun send(type: String, args: String = "{}"): String? = withContext(Dispatchers.IO) {
         val body = """{"type":"$type","args":$args,"ts":${System.currentTimeMillis()}}"""
-        Net.post(fb("devices/${deviceId()}/commands"), body)
+        val r = Net.post(fb("devices/${deviceId()}/commands"), body) ?: return@withContext null
+        try { JSONObject(r).optString("name", null) } catch (e: Exception) { null }
+    }
+
+    suspend fun getAck(): JSONObject? = withContext(Dispatchers.IO) {
+        val r = Net.get(fb("devices/${deviceId()}/last_ack")) ?: return@withContext null
+        try { if (r == "null") null else JSONObject(r) } catch (e: Exception) { null }
     }
 }
 
@@ -108,11 +117,24 @@ fun AppRoot(dark: Boolean, onTheme: (Boolean) -> Unit) {
     var tab by remember { mutableStateOf(0) }
     var status by remember { mutableStateOf<JSONObject?>(null) }
     val scope = rememberCoroutineScope()
+    val ctx = LocalContext.current
 
     LaunchedEffect(Unit) {
         while (true) { status = Repo.getStatus(); delay(4000) }
     }
-    val cmd: (String, String) -> Unit = { type, args -> scope.launch { Repo.send(type, args) } }
+    fun toast(m: String) = android.widget.Toast.makeText(ctx, m, android.widget.Toast.LENGTH_SHORT).show()
+    val cmd: (String, String) -> Unit = { type, args ->
+        scope.launch {
+            toast("Sent")
+            val key = Repo.send(type, args)
+            if (key != null) {
+                repeat(6) {
+                    delay(1500)
+                    if (Repo.getAck()?.optString("key") == key) { toast("✓ Done"); return@launch }
+                }
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -172,62 +194,75 @@ fun SetupScreen(onDone: () -> Unit) {
 // -------- Home --------
 @Composable
 fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
+    val ts = status?.optLong("ts") ?: 0L
     val online = status?.optBoolean("online") == true &&
-        (System.currentTimeMillis() / 1000.0 - (status?.optLong("ts") ?: 0) < 30)
+        (System.currentTimeMillis() / 1000.0 - ts < 30)
     val running = status?.optBoolean("desktime_running") == true
     val hours = status?.optJSONObject("hours")
     val total = hours?.optLong("desktimeTime") ?: 0
     val prod = hours?.optDouble("productivity") ?: 0.0
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(34.dp).clip(RoundedCornerShape(11.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFF7C6CF6), Color(0xFF4F46E5)))),
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.Filled.PowerSettingsNew, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
+            Spacer(Modifier.width(10.dp))
             Text("WorkspaceHelper", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             StatusChip(if (online) "PC online" else "PC offline", if (online) Green else Rose)
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(18.dp))
 
-        // status card
-        Card(shape = RoundedCornerShape(20.dp)) {
-            Column(Modifier.padding(18.dp)) {
-                Text("DESKTIME", fontSize = 11.sp, letterSpacing = 1.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Dot(if (running) Green else MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (running) "Running" else "Stopped", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.weight(1f))
-                    Text(hms(total), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        // hero status card (gradient)
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                .background(Brush.verticalGradient(listOf(
+                    MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface)))
+                .padding(20.dp)
+        ) {
+            Text("DESKTIME", fontSize = 11.sp, letterSpacing = 1.5.sp, color = muted, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Dot(if (running) Green else muted)
+                Spacer(Modifier.width(8.dp))
+                Text(if (running) "Running" else "Stopped", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(hms(total), fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                    Text("worked today", fontSize = 11.sp, color = muted)
                 }
-                Spacer(Modifier.height(14.dp))
-                Row(Modifier.fillMaxWidth()) {
-                    Text("Productivity", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f))
-                    Text("${prod.toInt()}%", fontSize = 12.sp, color = GreenText, fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = { (prod / 100.0).toFloat().coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)),
-                    color = Green, trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
             }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth()) {
+                Text("Productivity", fontSize = 12.sp, color = muted, modifier = Modifier.weight(1f))
+                Text("${prod.toInt()}%", fontSize = 12.sp, color = GreenText, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = { (prod / 100.0).toFloat().coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)),
+                color = Green, trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         }
-        Spacer(Modifier.height(16.dp))
-        Text("CONTROLS", fontSize = 11.sp, letterSpacing = 1.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(18.dp))
+        Text("CONTROLS", fontSize = 11.sp, letterSpacing = 1.5.sp, color = muted, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(10.dp))
 
         ControlCard(
             title = "DeskTime process", subtitle = "Open or close tracking",
+            icon = Icons.Filled.PowerSettingsNew, iconBg = Color(0xFF201C33), iconTint = Violet2,
             onStart = { cmd("desktime_start", "{}") }, onStop = { cmd("desktime_stop", "{}") },
             onTimer = { m -> cmd("desktime_timer", """{"minutes":$m,"direction":"open_then_close"}""") }
         )
         Spacer(Modifier.height(12.dp))
         ControlCard(
             title = "Mouse helper · F9", subtitle = "Keeps the PC active",
+            icon = Icons.Filled.Mouse, iconBg = Color(0xFF122A24), iconTint = Green,
             onStart = { cmd("mouse_start", """{"minutes":0}""") }, onStop = { cmd("mouse_stop", "{}") },
             onTimer = { m -> cmd("mouse_start", """{"minutes":$m}""") }
         )
@@ -240,30 +275,47 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A1619), contentColor = Rose),
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) { Text("Panic · stop everything", fontWeight = FontWeight.SemiBold) }
+
+        if (ts > 0) {
+            val age = (System.currentTimeMillis() / 1000 - ts).coerceAtLeast(0)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Updated " + (if (age < 60) "${age}s" else "${age / 60}m") + " ago",
+                fontSize = 11.sp, color = muted, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
 @Composable
-fun ControlCard(title: String, subtitle: String, onStart: () -> Unit, onStop: () -> Unit, onTimer: (Int) -> Unit) {
+fun ControlCard(
+    title: String, subtitle: String, icon: ImageVector, iconBg: Color, iconTint: Color,
+    onStart: () -> Unit, onStop: () -> Unit, onTimer: (Int) -> Unit
+) {
     var sel by remember { mutableStateOf(-1) }
     Card(shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(15.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(iconBg),
+                    contentAlignment = Alignment.Center
+                ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(19.dp)) }
+                Spacer(Modifier.width(11.dp))
                 Column(Modifier.weight(1f)) {
                     Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 FilledTonalButton(onClick = onStart,
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF10271F), contentColor = Green),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                 ) { Text("Start") }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(7.dp))
                 FilledTonalButton(onClick = onStop,
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF2A1619), contentColor = Rose),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                 ) { Text("Stop") }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Row {
                 listOf(15, 30, 60).forEachIndexed { i, m ->
                     FilterChip(selected = sel == i, onClick = { sel = i; onTimer(m) },
@@ -341,16 +393,20 @@ fun HoursScreen(status: JSONObject?) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         Text("DeskTime hours", fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
-        Card(shape = RoundedCornerShape(20.dp)) {
-            Row(Modifier.padding(18.dp), verticalAlignment = Alignment.Bottom) {
-                Column(Modifier.weight(1f)) {
-                    Text("TIME WORKED", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(hms(h?.optLong("desktimeTime") ?: 0), fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Effectiveness", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${(h?.optDouble("efficiency") ?: 0.0).toInt()}%", fontSize = 20.sp, color = GreenText, fontWeight = FontWeight.Bold)
-                }
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                .background(Brush.verticalGradient(listOf(
+                    MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface)))
+                .padding(18.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("TIME WORKED", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(hms(h?.optLong("desktimeTime") ?: 0), fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("Effectiveness", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${(h?.optDouble("efficiency") ?: 0.0).toInt()}%", fontSize = 20.sp, color = GreenText, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.height(14.dp))
