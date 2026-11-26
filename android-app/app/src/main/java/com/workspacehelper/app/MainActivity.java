@@ -46,6 +46,8 @@ public class MainActivity extends FragmentActivity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        s.setSupportZoom(false);          // no pinch-to-zoom of the whole UI
+        s.setBuiltInZoomControls(false);
         web.setWebViewClient(new WebViewClient());
         web.addJavascriptInterface(new Bridge(), "Android");
         setContentView(web);
