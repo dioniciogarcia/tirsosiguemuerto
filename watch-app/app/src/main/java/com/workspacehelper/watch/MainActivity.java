@@ -50,8 +50,19 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         prefs = getSharedPreferences("wh", MODE_PRIVATE);
-        if (url().isEmpty() || secret().isEmpty()) showSetup();
-        else showMain();
+        if (url().isEmpty() || secret().isEmpty()) {
+            // If a secret was baked in at build time, connect automatically so
+            // there's nothing to type on the watch.
+            String baked = BuildConfig.FIREBASE_SECRET;
+            if (baked != null && !baked.isEmpty()) {
+                prefs.edit().putString("url", DEFAULT_URL).putString("secret", baked).apply();
+                showMain();
+            } else {
+                showSetup();
+            }
+        } else {
+            showMain();
+        }
     }
 
     @Override
