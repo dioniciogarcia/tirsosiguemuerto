@@ -204,7 +204,8 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -216,28 +217,28 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
             Text("WorkspaceHelper", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             StatusChip(if (online) "PC online" else "PC offline", if (online) Green else Rose)
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(12.dp))
 
         // hero status card (gradient)
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
                 .background(Brush.verticalGradient(listOf(
                     MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface)))
-                .padding(20.dp)
+                .padding(14.dp)
         ) {
             Text("DESKTIME", fontSize = 11.sp, letterSpacing = 1.5.sp, color = muted, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Dot(if (running) Green else muted)
                 Spacer(Modifier.width(8.dp))
-                Text(if (running) "Running" else "Stopped", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(if (running) "Running" else "Stopped", fontSize = 21.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(hms(total), fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                    Text("worked today", fontSize = 11.sp, color = muted)
+                    Text(hms(total), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text("worked today", fontSize = 10.sp, color = muted)
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(11.dp))
             Row(Modifier.fillMaxWidth()) {
                 Text("Productivity", fontSize = 12.sp, color = muted, modifier = Modifier.weight(1f))
                 Text("${prod.toInt()}%", fontSize = 12.sp, color = GreenText, fontWeight = FontWeight.SemiBold)
@@ -245,13 +246,13 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
             Spacer(Modifier.height(6.dp))
             LinearProgressIndicator(
                 progress = { (prod / 100.0).toFloat().coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)),
+                modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)),
                 color = Green, trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(12.dp))
         Text("CONTROLS", fontSize = 11.sp, letterSpacing = 1.5.sp, color = muted, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
 
         ControlCard(
             title = "DeskTime process", subtitle = "Open or close tracking",
@@ -259,26 +260,26 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
             onStart = { cmd("desktime_start", "{}") }, onStop = { cmd("desktime_stop", "{}") },
             onTimer = { m -> cmd("desktime_timer", """{"minutes":$m,"direction":"open_then_close"}""") }
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(9.dp))
         ControlCard(
             title = "Mouse helper · F9", subtitle = "Keeps the PC active",
             icon = Icons.Filled.Mouse, iconBg = Color(0xFF122A24), iconTint = Green,
             onStart = { cmd("mouse_start", """{"minutes":0}""") }, onStop = { cmd("mouse_stop", "{}") },
             onTimer = { m -> cmd("mouse_start", """{"minutes":$m}""") }
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(11.dp))
 
         ScreenshotButton()
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(9.dp))
         Button(
             onClick = { cmd("panic", "{}") },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A1619), contentColor = Rose),
-            modifier = Modifier.fillMaxWidth().height(50.dp)
+            modifier = Modifier.fillMaxWidth().height(46.dp)
         ) { Text("Panic · stop everything", fontWeight = FontWeight.SemiBold) }
 
         if (ts > 0) {
             val age = (System.currentTimeMillis() / 1000 - ts).coerceAtLeast(0)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 "Updated " + (if (age < 60) "${age}s" else "${age / 60}m") + " ago",
                 fontSize = 11.sp, color = muted, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
@@ -294,10 +295,10 @@ fun ControlCard(
 ) {
     var sel by remember { mutableStateOf(-1) }
     Card(shape = RoundedCornerShape(18.dp)) {
-        Column(Modifier.padding(15.dp)) {
+        Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(iconBg),
+                    Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(iconBg),
                     contentAlignment = Alignment.Center
                 ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(19.dp)) }
                 Spacer(Modifier.width(11.dp))
@@ -315,7 +316,7 @@ fun ControlCard(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                 ) { Text("Stop") }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             Row {
                 listOf(15, 30, 60).forEachIndexed { i, m ->
                     FilterChip(selected = sel == i, onClick = { sel = i; onTimer(m) },
@@ -347,7 +348,7 @@ fun ScreenshotButton() {
                 loading = false
             }
         },
-        modifier = Modifier.fillMaxWidth().height(50.dp)
+        modifier = Modifier.fillMaxWidth().height(46.dp)
     ) {
         if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
         else Text("Capture screen")
