@@ -156,33 +156,59 @@ class Firebase:
 # DeskTime official API
 # ----------------------------------------------------------------------------
 def fetch_desktime(api_key):
-    """Return the day's DeskTime summary, projects, and apps, or None."""
-    out = {}
-    headers = {"X-API-Key": api_key, "Accept": "application/json"}
+    """Return the day's DeskTime summary, projects, and apps, or None.
+
+    The /employee endpoint already includes projects and apps, and it
+    authenticates with the apiKey as a query parameter.
+    """
     base = "https://desktime.com/api/v2/json"
     try:
-        emp = requests.get("%s/employee" % base, headers=headers, timeout=15).json()
-        # The API shape varies a little; keep whatever useful fields exist.
-        src = emp.get("employee", emp) if isinstance(emp, dict) else {}
-        for key in ("desktimeTime", "productiveTime", "productivity",
-                    "efficiency", "arrived", "left", "onlineTime",
-                    "offlineTime", "atWorkTime", "isOnline", "late"):
-            if key in src:
-                out[key] = src[key]
+        r = requests.get("%s/employee" % base,
+                         params={"apiKey": api_key},
+                         headers={"Accept": "application/json"},
+                         timeout=20)
+        data = r.json()
     except Exception as e:
-        log("DeskTime summary fetch failed: %s" % e)
+        log("DeskTime fetch failed: %s" % e)
+        return None
 
-    try:
-        proj = requests.get("%s/employee/projects" % base, headers=headers, timeout=15).json()
-        out["projects"] = proj
-    except Exception as e:
-        log("DeskTime projects fetch failed: %s" % e)
+    if not isinstance(data, dict) or "desktimeTime" not in data:
+        log("DeskTime returned unexpected data: %s" % str(data)[:200])
+        return None
 
-    try:
-        apps = requests.get("%s/employee/apps" % base, headers=headers, timeout=15).json()
-        out["apps"] = apps
-    except Exception as e:
-        log("DeskTime apps fetch failed: %s" % e)
+    # Plain summary fields (safe for Firebase).
+    out = {}
+    for key in ("desktimeTime", "productiveTime", "productivity", "efficiency",
+                "arrived", "left", "isOnline", "late", "atWorkTime"):
+        if key in data:
+            out[key] = data[key]
+
+    if isinstance(data.get("activeProject"), dict):
+        out["activeProject"] = data["activeProject"]
+
+    # Projects is already a clean list.
+    if isinstance(data.get("projects"), list):
+        out["projects"] = data["projects"]
+
+    # Apps come grouped by productivity, keyed by app name. App names contain
+    # dots ("app.next.nuorder.com") which Firebase forbids as keys, so flatten
+    # them into a plain list sorted by time used.
+    apps_out = []
+    cat_map = {"1": "productive", "0": "neutral", "-1": "unproductive"}
+    raw_apps = data.get("apps", {})
+    if isinstance(raw_apps, dict):
+        for cat, group in raw_apps.items():
+            if isinstance(group, dict):
+                for info in group.values():
+                    if isinstance(info, dict):
+                        apps_out.append({
+                            "name": info.get("name"),
+                            "duration": info.get("duration", 0),
+                            "type": info.get("type"),
+                            "productivity": cat_map.get(str(cat), "neutral"),
+                        })
+    apps_out.sort(key=lambda a: a.get("duration") or 0, reverse=True)
+    out["apps"] = apps_out
 
     return out or None
 
