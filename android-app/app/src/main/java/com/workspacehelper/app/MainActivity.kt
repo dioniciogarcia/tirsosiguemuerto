@@ -73,9 +73,9 @@ object Repo {
         try { if (r == "null") null else JSONObject(r) } catch (e: Exception) { null }
     }
 
-    suspend fun getScreenshot(): String? = withContext(Dispatchers.IO) {
+    suspend fun getScreenshot(): JSONObject? = withContext(Dispatchers.IO) {
         val r = Net.get(fb("devices/${deviceId()}/status/screenshot")) ?: return@withContext null
-        try { if (r == "null") null else JSONObject(r).optString("jpg_b64", null) } catch (e: Exception) { null }
+        try { if (r == "null") null else JSONObject(r) } catch (e: Exception) { null }
     }
 
     suspend fun listDevices(): List<Pair<String, String>> = withContext(Dispatchers.IO) {
@@ -400,12 +400,19 @@ fun ScreenshotButton() {
         onClick = {
             loading = true
             scope.launch {
+                // Remember the current screenshot's timestamp, then wait for a
+                // NEWER one so we never show the previous capture.
+                val oldTs = Repo.getScreenshot()?.optLong("ts", 0L) ?: 0L
                 Repo.send("screenshot")
                 var tries = 0
-                while (tries < 8) {
+                while (tries < 12) {
                     delay(1500); tries++
                     val s = Repo.getScreenshot()
-                    if (s != null) { b64 = s; show = true; break }
+                    val newTs = s?.optLong("ts", 0L) ?: 0L
+                    val jpg = s?.optString("jpg_b64", "") ?: ""
+                    if (newTs != 0L && newTs != oldTs && jpg.isNotEmpty()) {
+                        b64 = jpg; show = true; break
+                    }
                 }
                 loading = false
             }
