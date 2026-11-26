@@ -235,6 +235,8 @@
         <input id="r_time" type="time" style="width:auto;margin:0">
         <select id="r_action" style="flex:1;margin:0"></select>
       </div>
+      <div id="r_days" style="display:flex;gap:5px;margin-top:10px"></div>
+      <div class="muted" style="font-size:10.5px;margin-top:6px" data-t="days_hint"></div>
       <button class="btn btn-soft btn-wide" style="margin-top:10px" onclick="addRoutine()" data-t="add_routine"></button>
     </div>
 
@@ -271,7 +273,7 @@ const T = {
     capture:"Capture screen",last_capture:"Last capture",no_capture:"No capture yet.",settings:"Settings",device:"Device",language:"Language",require_fp:"Fingerprint for DeskTime",
     fp_sub:"Confirm before start/stop",on:"On",auto_shutdown:"Auto shutdown",set:"Set",cancel:"Cancel",app_version:"App version",check_updates:"Check",connection:"Connection",
     fb_link:"Firebase link",connected:"Connected",edit_connection:"Edit connection",home:"Home",hours:"Hours",online:"PC online",offline:"PC offline",
-    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device",routines:"Scheduled routines",add_routine:"Add routine",no_routines:"No routines yet",close:"Close",tap_expand:"Tap to open full-size",done:"Done",up_to_date:"You're up to date",updated:"Updated",ago:"ago"},
+    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device",routines:"Scheduled routines",add_routine:"Add routine",no_routines:"No routines yet",close:"Close",tap_expand:"Tap to open full-size",done:"Done",up_to_date:"You're up to date",updated:"Updated",ago:"ago",days_hint:"Leave days unselected to run every day"},
   es:{setup_intro:"Introduce tu conexión de Firebase para enlazar la app con tu PC.",fb_url:"URL de Firebase",fb_secret:"Secreto de Firebase",connect:"Conectar",
     unknown:"Desconocido",worked_today:"trabajado hoy",productivity:"Productividad",controls:"Controles",desktime_proc:"Proceso de DeskTime",open_close:"Abrir o cerrar el seguimiento",
     start:"Iniciar",stop:"Detener",mouse_helper:"Asistente de ratón · F9",keeps_active:"Mantiene la PC activa",off:"Apagado",confirm_screen:"Confirmar estado de pantalla",panic:"Pánico · detener todo",
@@ -280,7 +282,7 @@ const T = {
     capture:"Capturar pantalla",last_capture:"Última captura",no_capture:"Aún no hay captura.",settings:"Ajustes",device:"Dispositivo",language:"Idioma",require_fp:"Huella para DeskTime",
     fp_sub:"Confirmar antes de iniciar/detener",on:"Sí",auto_shutdown:"Apagado automático",set:"Fijar",cancel:"Cancelar",app_version:"Versión de la app",check_updates:"Buscar",connection:"Conexión",
     fb_link:"Enlace Firebase",connected:"Conectado",edit_connection:"Editar conexión",home:"Inicio",hours:"Horas",online:"PC en línea",offline:"PC sin conexión",
-    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo",routines:"Rutinas programadas",add_routine:"Añadir rutina",no_routines:"Aún no hay rutinas",close:"Cerrar",tap_expand:"Toca para ver en grande",done:"Hecho",up_to_date:"Ya estás al día",updated:"Actualizado",ago:"atrás"}
+    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo",routines:"Rutinas programadas",add_routine:"Añadir rutina",no_routines:"Aún no hay rutinas",close:"Cerrar",tap_expand:"Toca para ver en grande",done:"Hecho",up_to_date:"Ya estás al día",updated:"Actualizado",ago:"atrás",days_hint:"Sin días seleccionados se ejecuta todos los días"}
 };
 let lang = localStorage.getItem('lang') || 'en';
 function t(k){return (T[lang]&&T[lang][k])||k;}
@@ -289,7 +291,7 @@ function applyLang(){
   document.querySelectorAll('[data-t]').forEach(e=>e.textContent=t(e.dataset.t));
   document.getElementById('lang_en').classList.toggle('on',lang==='en');
   document.getElementById('lang_es').classList.toggle('on',lang==='es');
-  fillActionSelect();
+  fillActionSelect();fillDayChips();
 }
 function setLang(l){lang=l;localStorage.setItem('lang',l);applyLang();}
 
@@ -322,7 +324,7 @@ function go(name){
   ['home','hours','settings'].forEach(n=>{
     const b=document.getElementById('n_'+n);if(b)b.classList.toggle('on',n===name);
   });
-  if(name==='settings'){fillActionSelect();loadRoutines();}
+  if(name==='settings'){fillActionSelect();fillDayChips();loadRoutines();}
   window.scrollTo(0,0);
 }
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1600);}
@@ -502,24 +504,38 @@ window.onAuth=function(action,ok){if(ok)send(action==='start'?'desktime_start':'
 
 // ---------------- routines ----------------
 const R_ACTIONS=[['desktime_open','Open DeskTime','Abrir DeskTime'],['desktime_close','Close DeskTime','Cerrar DeskTime'],['mouse_start','Mouse helper 1h','Asistente ratón 1h'],['shutdown','Shut down PC','Apagar PC']];
+const DAY_LETTERS={en:['M','T','W','T','F','S','S'],es:['L','M','X','J','V','S','D']}; // index 0=Monday .. 6=Sunday
+let selDays=[];
+function dayLetters(){return DAY_LETTERS[lang==='es'?'es':'en'];}
 function fillActionSelect(){const s=document.getElementById('r_action');if(!s)return;const cur=s.value;s.innerHTML='';R_ACTIONS.forEach(a=>{const o=document.createElement('option');o.value=a[0];o.textContent=lang==='es'?a[2]:a[1];s.appendChild(o);});if(cur)s.value=cur;}
+function fillDayChips(){
+  const el=document.getElementById('r_days');if(!el)return;el.innerHTML='';
+  dayLetters().forEach((d,i)=>{const b=document.createElement('button');b.className='chip'+(selDays.includes(i)?' on':'');b.textContent=d;b.style.cssText='flex:1;padding:7px 0;min-height:36px';
+    b.onclick=()=>{selDays=selDays.includes(i)?selDays.filter(x=>x!==i):selDays.concat(i);fillDayChips();};el.appendChild(b);});
+}
 async function loadRoutines(){
   const el=document.getElementById('routine_list');if(!el||!deviceId)return;
   const r=await fbGet('devices/'+deviceId+'/routines');el.innerHTML='';
   if(!r){el.innerHTML='<div class="muted" style="font-size:12px;padding:6px 0">'+t('no_routines')+'</div>';return;}
   Object.keys(r).forEach(k=>{const it=r[k];if(!it||typeof it!=='object')return;
     const lbl=R_ACTIONS.find(a=>a[0]===it.type);const name=lbl?(lang==='es'?lbl[2]:lbl[1]):it.type;
+    const daysTxt=(it.days&&it.days.length)?' · '+it.days.map(d=>dayLetters()[d]).join(''):'';
+    const on=it.enabled!==false;
     const row=document.createElement('div');row.className='it';
-    row.innerHTML='<span style="flex:1;font-size:13px">'+esc(it.time||'')+' · '+esc(name)+'</span>';
-    const del=document.createElement('button');del.className='btn btn-stop';del.style.cssText='padding:7px 12px;min-height:36px;font-size:13px';del.textContent='✕';
-    del.onclick=()=>deleteRoutine(k);row.appendChild(del);el.appendChild(row);});
+    row.innerHTML='<span style="flex:1;font-size:13px'+(on?'':';opacity:.45')+'">'+esc(it.time||'')+' · '+esc(name)+esc(daysTxt)+'</span>';
+    const tog=document.createElement('button');tog.className='btn '+(on?'btn-go':'btn-ghost');tog.style.cssText='padding:7px 11px;min-height:36px;font-size:12px;margin-right:6px';tog.textContent=on?t('on'):t('off');
+    tog.onclick=()=>toggleRoutine(k,!on);
+    const del=document.createElement('button');del.className='btn btn-stop';del.style.cssText='padding:7px 12px;min-height:36px;font-size:13px';del.textContent='✕';del.onclick=()=>deleteRoutine(k);
+    row.appendChild(tog);row.appendChild(del);el.appendChild(row);});
 }
 async function addRoutine(){
   if(!deviceId){toast(t('pick_device'));return;}
   const time=document.getElementById('r_time').value;const type=document.getElementById('r_action').value;
   if(!time)return;const body={type,time,enabled:true};if(type==='mouse_start')body.minutes=60;
-  await fbPost('devices/'+deviceId+'/routines',body);toast(t('sent'));loadRoutines();
+  if(selDays.length)body.days=selDays.slice().sort((a,b)=>a-b);
+  await fbPost('devices/'+deviceId+'/routines',body);toast(t('sent'));selDays=[];fillDayChips();loadRoutines();
 }
+async function toggleRoutine(k,on){try{await fetch(fbUrl('devices/'+deviceId+'/routines/'+k),{method:'PATCH',body:JSON.stringify({enabled:on})});}catch(e){}loadRoutines();}
 async function deleteRoutine(k){try{await fetch(fbUrl('devices/'+deviceId+'/routines/'+k),{method:'DELETE'});}catch(e){}loadRoutines();}
 
 // ---------------- boot ----------------

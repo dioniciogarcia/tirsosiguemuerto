@@ -393,6 +393,11 @@ class Helper:
                 continue
             if r.get("time") != now:
                 continue
+            days = r.get("days")
+            if isinstance(days, list) and days:
+                # days use Monday=0 .. Sunday=6, same as datetime.weekday()
+                if dt.datetime.now().weekday() not in days:
+                    continue
             if key in self._fired:
                 continue
             self._fired.add(key)
