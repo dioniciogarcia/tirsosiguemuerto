@@ -179,15 +179,8 @@
       <div class="row"><span style="font-weight:600;font-size:13px" data-t="productivity"></span><span id="h_prod" style="color:#6EE7B7;font-weight:600">—</span></div>
       <div class="bar"><span id="h_prod_bar" style="width:0%"></span></div>
     </div>
-    <button class="btn btn-ghost btn-wide" style="margin-top:14px" onclick="go('projects')" data-t="view_projects"></button>
-  </section>
-
-  <!-- PROJECTS & APPS -->
-  <section id="s_projects" class="screen hidden">
-    <h1 data-t="projects_apps"></h1>
     <div class="card"><div style="font-weight:600;font-size:13px;margin-bottom:6px" data-t="projects"></div><div id="proj_list" class="list"></div></div>
     <div class="card"><div style="font-weight:600;font-size:13px;margin-bottom:6px" data-t="top_apps"></div><div id="apps_list" class="list"></div></div>
-    <button class="btn btn-ghost btn-wide" style="margin-top:14px" onclick="go('hours')" data-t="back"></button>
   </section>
 
   <!-- SCREEN CHECK -->
@@ -310,7 +303,7 @@ function editConnection(){localStorage.removeItem('cfg');cfg=null;boot();}
 
 // ---------------- navigation ----------------
 function go(name){
-  ['home','hours','projects','screen','settings'].forEach(s=>{
+  ['home','hours','screen','settings'].forEach(s=>{
     document.getElementById('s_'+s).classList.toggle('hidden',s!==name);
   });
   ['home','hours','settings'].forEach(n=>{
