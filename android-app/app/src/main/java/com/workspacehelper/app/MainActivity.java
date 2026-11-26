@@ -1,14 +1,30 @@
 package com.workspacehelper.app;
 
-import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
 import android.webkit.WebViewClient;
 
-// A thin native shell: it just hosts the WebView that runs the app UI
-// (assets/www/index.html). All logic lives in that HTML/JS.
-public class MainActivity extends Activity {
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.fragment.app.FragmentActivity;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.concurrent.Executor;
+
+// Hosts the WebView app UI and exposes a small native bridge to it for
+// things the web layer can't do: fingerprint confirmation and installing
+// an app update.
+public class MainActivity extends FragmentActivity {
     private WebView web;
 
     @Override
@@ -19,16 +35,88 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         web.setWebViewClient(new WebViewClient());
+        web.addJavascriptInterface(new Bridge(), "Android");
         setContentView(web);
         web.loadUrl("file:///android_asset/www/index.html");
     }
 
     @Override
     public void onBackPressed() {
-        if (web != null && web.canGoBack()) {
-            web.goBack();
-        } else {
-            super.onBackPressed();
+        if (web != null && web.canGoBack()) web.goBack();
+        else super.onBackPressed();
+    }
+
+    // ----- bridge exposed to JavaScript as window.Android -----
+    private class Bridge {
+        @JavascriptInterface
+        public void authenticate(final String action) {
+            runOnUiThread(() -> showBiometric(action));
+        }
+
+        @JavascriptInterface
+        public void installUpdate(final String url) {
+            new Thread(() -> downloadAndInstall(url)).start();
+        }
+    }
+
+    private void callAuth(String action, boolean ok) {
+        runOnUiThread(() ->
+            web.evaluateJavascript("window.onAuth && window.onAuth('" + action + "'," + ok + ")", null));
+    }
+
+    private void showBiometric(final String action) {
+        BiometricManager bm = BiometricManager.from(this);
+        int allowed = BiometricManager.Authenticators.BIOMETRIC_WEAK
+                | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
+        if (bm.canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) {
+            // No fingerprint/PIN set up on the phone - don't block the action.
+            callAuth(action, true);
+            return;
+        }
+        Executor ex = ContextCompat.getMainExecutor(this);
+        BiometricPrompt bp = new BiometricPrompt(this, ex,
+            new BiometricPrompt.AuthenticationCallback() {
+                @Override
+                public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult r) {
+                    callAuth(action, true);
+                }
+                @Override
+                public void onAuthenticationError(int code, CharSequence msg) {
+                    callAuth(action, false);
+                }
+            });
+        BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle("WorkspaceHelper")
+                .setSubtitle(action.equals("stop")
+                        ? "Confirm closing DeskTime" : "Confirm opening DeskTime")
+                .setAllowedAuthenticators(allowed)
+                .build();
+        bp.authenticate(info);
+    }
+
+    private void downloadAndInstall(String url) {
+        try {
+            File out = new File(getExternalFilesDir(null), "update.apk");
+            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+            c.setInstanceFollowRedirects(true);
+            c.setConnectTimeout(20000);
+            c.setReadTimeout(60000);
+            InputStream in = c.getInputStream();
+            FileOutputStream fo = new FileOutputStream(out);
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) fo.write(buf, 0, n);
+            fo.close();
+            in.close();
+            c.disconnect();
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", out);
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setDataAndType(uri, "application/vnd.android.package-archive");
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception e) {
+            runOnUiThread(() ->
+                web.evaluateJavascript("window.onUpdateFailed && window.onUpdateFailed()", null));
         }
     }
 }

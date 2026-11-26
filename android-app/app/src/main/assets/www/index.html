@@ -332,6 +332,7 @@ let fpOn = localStorage.getItem('fp')!=='0';
 function setFp(v){fpOn=v;localStorage.setItem('fp',v?'1':'0');document.getElementById('fp_on').classList.toggle('on',v);document.getElementById('fp_off').classList.toggle('on',!v);}
 function confirmDesktime(action){
   if(!fpOn){send(action==='start'?'desktime_start':'desktime_stop');return;}
+  if(window.Android&&Android.authenticate){Android.authenticate(action);return;}
   const ov=document.createElement('div');ov.className='overlay';
   ov.innerHTML='<div class="modal"><div style="width:54px;height:54px;border-radius:16px;margin:0 auto;background:'+(action==='stop'?'#2A1619':'#10271F')+';display:flex;align-items:center;justify-content:center">'
     +'<svg width="26" height="26" viewBox="0 0 24 24" class="svc" style="stroke:'+(action==='stop'?'#FB7185':'#34D399')+'"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg></div>'
@@ -423,7 +424,13 @@ async function pollScreenshot(){
     document.getElementById('ss_time').textContent=new Date(ss.ts*1000).toLocaleTimeString();
   }
 }
-function checkUpdate(){window.open(RELEASES,'_blank');}
+const APK_URL="https://github.com/dioniciogarcia/tirsosiguemuerto/releases/download/app-latest/WorkspaceHelper.apk";
+function checkUpdate(){
+  if(window.Android&&Android.installUpdate){toast(lang==='es'?'Descargando…':'Downloading…');Android.installUpdate(APK_URL);}
+  else{window.open(RELEASES,'_blank');}
+}
+window.onAuth=function(action,ok){if(ok)send(action==='start'?'desktime_start':'desktime_stop');else toast('✕');};
+window.onUpdateFailed=function(){toast('✕');};
 
 // ---------------- boot ----------------
 async function boot(){
