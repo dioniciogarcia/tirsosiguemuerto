@@ -235,6 +235,7 @@ class Helper:
         self.mouse_timer = None        # threading.Timer to auto-press F9
         self.shutdown_at = None        # "HH:MM" string, or None
         self._last_hours = 0
+        self.last_hours_data = None     # most recent DeskTime hours payload
         # Each PC lives under devices/<id>/ so several people can share one
         # database. The id defaults to a slug of the device name.
         self.device_id = cfg.get("device_id") or slugify(cfg.get("device_name"))
@@ -512,6 +513,7 @@ class Helper:
                     data = fetch_desktime(self.cfg["desktime_api_key"])
                     if data is not None:
                         self.fb.put(self.base + "/status/hours", data)
+                        self.last_hours_data = data
                     last_hours = now
 
                 # scheduled shutdown check
@@ -547,6 +549,43 @@ def make_tray_image():
 
 
 def run_with_tray(helper):
+    def status_text():
+        running = helper.desktime_is_running()
+        dt_txt = "on" if running else ("off" if running is not None else "unknown")
+        lines = [
+            "Device: %s" % helper.cfg["device_name"],
+            "DeskTime: %s" % dt_txt,
+            "Mouse helper: %s" % ("on" if helper.mouse_running else "off"),
+        ]
+        h = helper.last_hours_data or {}
+        secs = int(h.get("desktimeTime", 0) or 0)
+        if secs:
+            lines.append("Worked today: %dh %02dm" % (secs // 3600, (secs % 3600) // 60))
+            prod = h.get("productivity")
+            if prod is not None:
+                lines.append("Productivity: %d%%" % int(prod))
+        if helper.shutdown_at:
+            lines.append("Shutdown scheduled: %s" % helper.shutdown_at)
+        lines.append("")
+        lines.append("Control everything from the phone app.")
+        return "\n".join(lines)
+
+    def on_status(icon, item):
+        threading.Thread(target=lambda: msgbox(status_text(), "WorkspaceHelper status"),
+                         daemon=True).start()
+
+    def on_open_dt(icon, item):
+        helper.desktime_start()
+
+    def on_close_dt(icon, item):
+        helper.desktime_stop()
+
+    def on_mouse_on(icon, item):
+        helper.mouse_start(60)
+
+    def on_mouse_off(icon, item):
+        helper.mouse_stop()
+
     def on_quit(icon, item):
         helper.running = False
         try:
@@ -557,7 +596,14 @@ def run_with_tray(helper):
         icon.stop()
 
     menu = pystray.Menu(
-        pystray.MenuItem("WorkspaceHelper (running)", None, enabled=False),
+        # default=True => a left-click on the tray icon shows the status popup
+        pystray.MenuItem("Show status", on_status, default=True),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem("Open DeskTime", on_open_dt),
+        pystray.MenuItem("Close DeskTime", on_close_dt),
+        pystray.MenuItem("Mouse helper (1h)", on_mouse_on),
+        pystray.MenuItem("Stop mouse helper", on_mouse_off),
+        pystray.Menu.SEPARATOR,
         pystray.MenuItem("Quit", on_quit),
     )
     icon = pystray.Icon("WorkspaceHelper", make_tray_image(),
