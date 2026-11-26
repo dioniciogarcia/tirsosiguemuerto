@@ -531,7 +531,7 @@ fun SectionList(title: String, arr: org.json.JSONArray?, project: Boolean, date:
                         Text(hms(dur), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (project) {
                             IconButton(onClick = {
-                                val text = "$name - [start] - [end]\n(${hms(dur)} on $date)\n* Ticket #"
+                                val text = "$name - ${hms(dur)} - $date"
                                 val send = android.content.Intent(android.content.Intent.ACTION_SEND)
                                 send.type = "text/plain"; send.putExtra(android.content.Intent.EXTRA_TEXT, text)
                                 ctx.startActivity(android.content.Intent.createChooser(send, Lang.t("Share", "Compartir")))
