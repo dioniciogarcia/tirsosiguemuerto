@@ -5,8 +5,17 @@ import android.content.SharedPreferences
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Base64
-import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequest
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -82,6 +91,17 @@ object Repo {
         val r = Net.get(fb("devices/${deviceId()}/last_ack")) ?: return@withContext null
         try { if (r == "null") null else JSONObject(r) } catch (e: Exception) { null }
     }
+
+    suspend fun getHistory(date: String): JSONObject? = withContext(Dispatchers.IO) {
+        val r = Net.get(fb("devices/${deviceId()}/history/$date")) ?: return@withContext null
+        try { if (r == "null") null else JSONObject(r) } catch (e: Exception) { null }
+    }
+}
+
+fun dateStr(daysAgo: Int): String {
+    val c = java.util.Calendar.getInstance()
+    c.add(java.util.Calendar.DAY_OF_YEAR, -daysAgo)
+    return java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(c.time)
 }
 
 fun hms(sec: Long): String {
@@ -89,7 +109,23 @@ fun hms(sec: Long): String {
     return "${h}h ${m.toString().padStart(2, '0')}m"
 }
 
-class MainActivity : ComponentActivity() {
+fun showBiometric(activity: FragmentActivity, subtitle: String, onOk: () -> Unit) {
+    val allowed = BiometricManager.Authenticators.BIOMETRIC_WEAK or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    if (BiometricManager.from(activity).canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) {
+        onOk(); return
+    }
+    val prompt = BiometricPrompt(activity, ContextCompat.getMainExecutor(activity),
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) { onOk() }
+        })
+    val info = BiometricPrompt.PromptInfo.Builder()
+        .setTitle("WorkspaceHelper").setSubtitle(subtitle)
+        .setAllowedAuthenticators(allowed).build()
+    prompt.authenticate(info)
+}
+
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Repo.prefs = getSharedPreferences("wh", Context.MODE_PRIVATE)
@@ -135,6 +171,11 @@ fun AppRoot(dark: Boolean, onTheme: (Boolean) -> Unit) {
             }
         }
     }
+    val cmdAuth: (String, String, String) -> Unit = { type, args, subtitle ->
+        val act = ctx as? FragmentActivity
+        if (Repo.prefs.getBoolean("fp", true) && act != null) showBiometric(act, subtitle) { cmd(type, args) }
+        else cmd(type, args)
+    }
 
     Scaffold(
         bottomBar = {
@@ -150,8 +191,8 @@ fun AppRoot(dark: Boolean, onTheme: (Boolean) -> Unit) {
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (tab) {
-                0 -> HomeScreen(status, cmd)
-                1 -> HoursScreen(status)
+                0 -> HomeScreen(status, cmd, cmdAuth)
+                1 -> HoursScreen(status, cmd)
                 else -> SettingsScreen(dark, onTheme) { configured = false }
             }
         }
@@ -193,7 +234,7 @@ fun SetupScreen(onDone: () -> Unit) {
 
 // -------- Home --------
 @Composable
-fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
+fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit, cmdAuth: (String, String, String) -> Unit) {
     val ts = status?.optLong("ts") ?: 0L
     val online = status?.optBoolean("online") == true &&
         (System.currentTimeMillis() / 1000.0 - ts < 30)
@@ -257,7 +298,8 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
         ControlCard(
             title = "DeskTime process", subtitle = "Open or close tracking",
             icon = Icons.Filled.PowerSettingsNew, iconBg = Color(0xFF201C33), iconTint = Violet2,
-            onStart = { cmd("desktime_start", "{}") }, onStop = { cmd("desktime_stop", "{}") },
+            onStart = { cmdAuth("desktime_start", "{}", "Confirm opening DeskTime") },
+            onStop = { cmdAuth("desktime_stop", "{}", "Confirm closing DeskTime") },
             onTimer = { m -> cmd("desktime_timer", """{"minutes":$m,"direction":"open_then_close"}""") }
         )
         Spacer(Modifier.height(9.dp))
@@ -389,11 +431,42 @@ fun ScreenshotViewer(b64: String, onClose: () -> Unit) {
 
 // -------- Hours --------
 @Composable
-fun HoursScreen(status: JSONObject?) {
-    val h = status?.optJSONObject("hours")
+fun HoursScreen(status: JSONObject?, cmd: (String, String) -> Unit) {
+    val today = remember { dateStr(0) }
+    var selDate by remember { mutableStateOf(today) }
+    var histHours by remember { mutableStateOf<JSONObject?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val h = if (selDate == today) status?.optJSONObject("hours") else histHours
+    val dates = remember { (0..6).map { dateStr(it) } }
+    fun label(d: String) = when (d) { today -> "Today"; dateStr(1) -> "Yesterday"; else -> d }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-        Text("DeskTime hours", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("DeskTime hours", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Box {
+                FilledTonalButton(onClick = { expanded = true },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                    Text(label(selDate), fontSize = 13.sp); Icon(Icons.Filled.ArrowDropDown, null)
+                }
+                DropdownMenu(expanded, { expanded = false }) {
+                    dates.forEach { d ->
+                        DropdownMenuItem(text = { Text(label(d)) }, onClick = {
+                            expanded = false; selDate = d
+                            if (d == today) histHours = null
+                            else {
+                                histHours = null
+                                cmd("fetch_history", """{"date":"$d"}""")
+                                scope.launch {
+                                    repeat(8) { delay(1500); val x = Repo.getHistory(d); if (x != null) { histHours = x; return@launch } }
+                                }
+                            }
+                        })
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
                 .background(Brush.verticalGradient(listOf(
@@ -411,14 +484,15 @@ fun HoursScreen(status: JSONObject?) {
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionList("Projects", h?.optJSONArray("projects"), project = true)
+        SectionList("Projects", h?.optJSONArray("projects"), project = true, date = selDate)
         Spacer(Modifier.height(14.dp))
-        SectionList("Top apps", h?.optJSONArray("apps"), project = false)
+        SectionList("Top apps", h?.optJSONArray("apps"), project = false, date = selDate)
     }
 }
 
 @Composable
-fun SectionList(title: String, arr: org.json.JSONArray?, project: Boolean) {
+fun SectionList(title: String, arr: org.json.JSONArray?, project: Boolean, date: String) {
+    val ctx = LocalContext.current
     Card(shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(16.dp)) {
             Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -431,11 +505,22 @@ fun SectionList(title: String, arr: org.json.JSONArray?, project: Boolean) {
                     val name = if (project) (o.optString("task_title").ifEmpty { o.optString("project_title") }) else o.optString("name")
                     val dur = o.optLong("duration")
                     val col = when (o.optString("productivity")) { "productive" -> Green; "unproductive" -> Rose; else -> MaterialTheme.colorScheme.onSurfaceVariant }
-                    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Dot(if (project) MaterialTheme.colorScheme.primary else col)
                         Spacer(Modifier.width(10.dp))
                         Text(name, fontSize = 13.sp, modifier = Modifier.weight(1f))
                         Text(hms(dur), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (project) {
+                            IconButton(onClick = {
+                                val text = "$name - [start] - [end]\n(${hms(dur)} on $date)\n* Ticket #"
+                                val send = android.content.Intent(android.content.Intent.ACTION_SEND)
+                                send.type = "text/plain"; send.putExtra(android.content.Intent.EXTRA_TEXT, text)
+                                ctx.startActivity(android.content.Intent.createChooser(send, "Share"))
+                            }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Filled.Share, "Share", modifier = Modifier.size(17.dp),
+                                    tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                     }
                 }
             }
@@ -455,6 +540,10 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
         if (deviceId.isEmpty() && d.isNotEmpty()) { deviceId = d[0].first; Repo.prefs.edit().putString("deviceId", deviceId).apply() }
     }
     val deviceName = devices.firstOrNull { it.first == deviceId }?.second ?: deviceId.ifEmpty { "—" }
+    val ctx = LocalContext.current
+    var fp by remember { mutableStateOf(Repo.prefs.getBoolean("fp", true)) }
+    var notif by remember { mutableStateOf(Repo.prefs.getBoolean("notif_enabled", false)) }
+    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         Text("Settings", fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -493,6 +582,24 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
         }
         Spacer(Modifier.height(12.dp))
 
+        ToggleCard("Fingerprint for DeskTime", "Confirm before start/stop", fp) {
+            fp = it; Repo.prefs.edit().putBoolean("fp", it).apply()
+        }
+        Spacer(Modifier.height(12.dp))
+        ToggleCard("PC offline alerts", "Notify when the PC goes offline", notif) {
+            notif = it; Repo.prefs.edit().putBoolean("notif_enabled", it).apply()
+            if (it) {
+                if (android.os.Build.VERSION.SDK_INT >= 33)
+                    permLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                val w = PeriodicWorkRequest.Builder(StatusWorker::class.java, 15, TimeUnit.MINUTES).build()
+                WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
+                    "status-check", ExistingPeriodicWorkPolicy.UPDATE, w)
+            } else {
+                WorkManager.getInstance(ctx).cancelUniqueWork("status-check")
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
         Card(shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("Connection", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -511,6 +618,19 @@ fun SegButton(text: String, selected: Boolean, modifier: Modifier = Modifier, on
         Button(onClick = onClick, modifier = modifier.height(44.dp)) { Text(text) }
     } else {
         OutlinedButton(onClick = onClick, modifier = modifier.height(44.dp)) { Text(text) }
+    }
+}
+
+@Composable
+fun ToggleCard(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Card(shape = RoundedCornerShape(18.dp)) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = checked, onCheckedChange = onChange)
+        }
     }
 }
 
