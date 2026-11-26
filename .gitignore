@@ -1,0 +1,36 @@
+# ---- Secrets: never commit these ----
+# Your real settings with the DeskTime API key and Firebase details:
+config.json
+pc-program/config.json
+firebase-service-account.json
+*-service-account.json
+google-services.json
+*.keystore
+*.jks
+key.properties
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+build/
+dist/
+*.spec
+
+# ---- Android / Gradle ----
+.gradle/
+local.properties
+/captures/
+*.apk
+*.aab
+
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# logs
+*.log
