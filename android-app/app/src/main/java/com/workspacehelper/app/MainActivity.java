@@ -201,6 +201,27 @@ public class MainActivity extends FragmentActivity {
             in.close();
             c.disconnect();
             updateProgress(100);
+
+            // A real APK is multi-MB; anything tiny is an error page, not an APK.
+            if (out.length() < 100000) {
+                runOnUiThread(() ->
+                    web.evaluateJavascript("window.onUpdateFailed && window.onUpdateFailed()", null));
+                return;
+            }
+
+            // Android needs the user to allow "install unknown apps" for this app.
+            if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+                runOnUiThread(() -> {
+                    web.evaluateJavascript("window.onUpdateNeedsPermission && window.onUpdateNeedsPermission()", null);
+                    try {
+                        startActivity(new Intent(
+                                android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:" + getPackageName())));
+                    } catch (Exception ignored) {}
+                });
+                return;
+            }
+
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", out);
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.setDataAndType(uri, "application/vnd.android.package-archive");

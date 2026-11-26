@@ -564,6 +564,12 @@ window.onUpdateProgress=function(p){
     setTimeout(()=>{if(updOverlay){updOverlay.remove();updOverlay=null;}},1800);}
 };
 window.onUpdateFailed=function(){if(updOverlay){updOverlay.remove();updOverlay=null;}toast('✕');};
+window.onUpdateNeedsPermission=function(){
+  if(updOverlay){const tl=updOverlay.querySelector('#upd_title');const pc=updOverlay.querySelector('#upd_pct');
+    if(tl)tl.textContent=(lang==='es'?'Permite «instalar apps desconocidas», luego pulsa Actualizar otra vez':'Allow "install unknown apps", then tap Update again');
+    if(pc)pc.textContent='';}
+  setTimeout(()=>{if(updOverlay){updOverlay.remove();updOverlay=null;}},4500);
+};
 window.onAuth=function(action,ok){if(ok)send(action==='start'?'desktime_start':'desktime_stop');else toast('✕');};
 
 // ---------------- routines ----------------

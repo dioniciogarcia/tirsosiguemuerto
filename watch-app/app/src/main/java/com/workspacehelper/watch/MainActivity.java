@@ -114,6 +114,11 @@ public class MainActivity extends Activity {
         Button en = findViewById(R.id.lang_en), esb = findViewById(R.id.lang_es);
         en.setOnClickListener(v -> { prefs.edit().putString("lang", "en").apply(); showSettings(); });
         esb.setOnClickListener(v -> { prefs.edit().putString("lang", "es").apply(); showSettings(); });
+        boolean isEs = es();
+        en.setBackgroundResource(isEs ? android.R.color.transparent : R.drawable.w_seg_on);
+        esb.setBackgroundResource(isEs ? R.drawable.w_seg_on : android.R.color.transparent);
+        en.setTextColor(isEs ? 0xFF9AA3B2 : 0xFFC4B9FF);
+        esb.setTextColor(isEs ? 0xFFC4B9FF : 0xFF9AA3B2);
         Button edit = findViewById(R.id.edit);
         edit.setText(es() ? "Editar conexión" : "Edit connection");
         edit.setOnClickListener(v -> showSetup());

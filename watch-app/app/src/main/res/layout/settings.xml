@@ -3,6 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000"
+    android:scrollbars="none"
     android:fillViewport="true">
 
     <LinearLayout
@@ -10,10 +11,10 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center_horizontal"
-        android:paddingLeft="22dp"
-        android:paddingRight="22dp"
-        android:paddingTop="48dp"
-        android:paddingBottom="40dp">
+        android:paddingLeft="30dp"
+        android:paddingRight="30dp"
+        android:paddingTop="56dp"
+        android:paddingBottom="46dp">
 
         <TextView
             android:id="@+id/title"
@@ -21,62 +22,83 @@
             android:layout_height="wrap_content"
             android:text="Settings"
             android:textColor="#F4F6FA"
-            android:textSize="15sp"
+            android:textSize="16sp"
             android:textStyle="bold"
-            android:layout_marginBottom="12dp"/>
+            android:letterSpacing="0.02"
+            android:layout_marginBottom="16dp"/>
 
         <Button
             android:id="@+id/device"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/btn_ghost"
-            android:text="Device: —"
-            android:textColor="#C7CDD9"
-            android:textSize="13sp"/>
+            android:background="@drawable/w_card"
+            android:text="Device"
+            android:textColor="#F4F6FA"
+            android:textSize="13sp"
+            android:minHeight="0dp"
+            android:paddingTop="13dp"
+            android:paddingBottom="13dp"
+            android:layout_marginBottom="10dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="10dp">
+            android:background="@drawable/w_seg"
+            android:padding="4dp"
+            android:layout_marginBottom="10dp">
 
             <Button
                 android:id="@+id/lang_en"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="6dp"
-                android:background="@drawable/btn_ghost"
+                android:background="@android:color/transparent"
                 android:text="EN"
-                android:textColor="#C7CDD9"/>
+                android:textSize="13sp"
+                android:textColor="#9AA3B2"
+                android:minHeight="0dp"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp"/>
 
             <Button
                 android:id="@+id/lang_es"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:background="@drawable/btn_ghost"
+                android:background="@android:color/transparent"
                 android:text="ES"
-                android:textColor="#C7CDD9"/>
+                android:textSize="13sp"
+                android:textColor="#9AA3B2"
+                android:minHeight="0dp"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp"/>
         </LinearLayout>
 
         <Button
             android:id="@+id/edit"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/btn_ghost"
+            android:background="@drawable/w_secondary"
             android:text="Edit connection"
             android:textColor="#C7CDD9"
             android:textSize="13sp"
-            android:layout_marginTop="10dp"/>
+            android:minHeight="0dp"
+            android:paddingTop="13dp"
+            android:paddingBottom="13dp"
+            android:layout_marginBottom="10dp"/>
 
         <Button
             android:id="@+id/back"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/btn_accent"
+            android:background="@drawable/w_primary"
             android:text="Back"
             android:textColor="#FFFFFF"
-            android:layout_marginTop="10dp"/>
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:minHeight="0dp"
+            android:paddingTop="13dp"
+            android:paddingBottom="13dp"/>
     </LinearLayout>
 </ScrollView>
