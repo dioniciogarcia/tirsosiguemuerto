@@ -57,9 +57,24 @@ except Exception:
     pystray = None
 
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+# Where the program lives. For a packaged one-file .exe, __file__ points at a
+# temporary unpack folder, NOT the folder the user put the .exe in - so we use
+# the .exe's own folder, which is where config.json sits next to it.
+if getattr(sys, "frozen", False):
+    HERE = os.path.dirname(sys.executable)
+else:
+    HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(HERE, "config.json")
 LOG_PATH = os.path.join(HERE, "workspacehelper.log")
+
+
+def msgbox(text, title="WorkspaceHelper"):
+    """Show a Windows pop-up so errors aren't silent. Falls back to the log."""
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, text, title, 0x10)  # 0x10 = error icon
+    except Exception:
+        log("%s: %s" % (title, text))
 
 
 # ----------------------------------------------------------------------------
@@ -438,8 +453,8 @@ def run_with_tray(helper):
 def main():
     cfg = load_config()
     if not cfg:
-        # Keep the window up a moment so the user can read the error.
-        time.sleep(6)
+        msgbox("Could not find or read config.json.\n\nMake sure config.json "
+               "is in the SAME folder as WorkspaceHelper.exe:\n\n%s" % CONFIG_PATH)
         sys.exit(1)
 
     helper = Helper(cfg)
@@ -458,5 +473,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        log("Fatal error:\n" + traceback.format_exc())
-        time.sleep(6)
+        err = traceback.format_exc()
+        log("Fatal error:\n" + err)
+        msgbox("WorkspaceHelper hit an error and stopped:\n\n" + err)
