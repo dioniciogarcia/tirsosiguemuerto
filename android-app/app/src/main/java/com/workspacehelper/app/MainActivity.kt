@@ -644,6 +644,9 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
         RoutinesCard()
         Spacer(Modifier.height(12.dp))
 
+        UpdateCard()
+        Spacer(Modifier.height(12.dp))
+
         Card(shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text(Lang.t("Connection", "Conexión"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -662,6 +665,90 @@ fun SegButton(text: String, selected: Boolean, modifier: Modifier = Modifier, on
         Button(onClick = onClick, modifier = modifier.height(44.dp)) { Text(text) }
     } else {
         OutlinedButton(onClick = onClick, modifier = modifier.height(44.dp)) { Text(text) }
+    }
+}
+
+@Composable
+fun UpdateCard() {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var state by remember { mutableStateOf("idle") } // idle | checking | available | uptodate | downloading | error
+    var latestName by remember { mutableStateOf("") }
+    fun toast(m: String) = android.widget.Toast.makeText(ctx, m, android.widget.Toast.LENGTH_LONG).show()
+
+    Card(shape = RoundedCornerShape(18.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(Lang.t("Updates", "Actualizaciones"), fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("v" + BuildConfig.VERSION_NAME, fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(10.dp))
+            when (state) {
+                "available" -> {
+                    Text(Lang.t("New version available: ", "Nueva versión disponible: ") + latestName,
+                        fontSize = 12.sp, color = GreenText)
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = {
+                        if (android.os.Build.VERSION.SDK_INT >= 26 &&
+                            !ctx.packageManager.canRequestPackageInstalls()) {
+                            toast(Lang.t("Allow installing apps for WorkspaceHelper, then tap Install again",
+                                "Permite instalar apps a WorkspaceHelper y toca Instalar de nuevo"))
+                            try {
+                                ctx.startActivity(android.content.Intent(
+                                    android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    android.net.Uri.parse("package:" + ctx.packageName))
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                            } catch (e: Exception) {}
+                            return@Button
+                        }
+                        state = "downloading"
+                        scope.launch {
+                            val f = Updater.download(ctx)
+                            if (f != null) { Updater.install(ctx, f); state = "available" }
+                            else { state = "error"; toast(Lang.t("Download failed", "Falló la descarga")) }
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) {
+                        Text(Lang.t("Download & install", "Descargar e instalar"))
+                    }
+                }
+                "downloading" -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Text(Lang.t("Downloading…", "Descargando…"), fontSize = 12.sp)
+                    }
+                }
+                else -> {
+                    if (state == "uptodate") {
+                        Text(Lang.t("You're on the latest version.", "Tienes la última versión."),
+                            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    if (state == "error") {
+                        Text(Lang.t("Couldn't check. Check your connection and try again.",
+                            "No se pudo verificar. Revisa tu conexión e intenta de nuevo."),
+                            fontSize = 12.sp, color = Rose)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    OutlinedButton(onClick = {
+                        state = "checking"
+                        scope.launch {
+                            val l = Updater.latest()
+                            state = when {
+                                l == null -> "error"
+                                l.first > BuildConfig.VERSION_CODE -> { latestName = l.second; "available" }
+                                else -> "uptodate"
+                            }
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) {
+                        if (state == "checking") CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        else Text(Lang.t("Check for updates", "Buscar actualizaciones"))
+                    }
+                }
+            }
+        }
     }
 }
 
