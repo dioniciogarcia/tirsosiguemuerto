@@ -531,12 +531,18 @@ function openScreenshot(){
   const ov=document.createElement('div');ov.className='overlay';
   ov.style.cssText='position:fixed;inset:0;background:#000;z-index:70;display:flex;flex-direction:column;padding:0';
   const scroll=document.createElement('div');
-  scroll.style.cssText='flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center';
-  const big=document.createElement('img');big.src=img.src;big.style.cssText='max-width:none;width:auto;height:auto;display:block';
+  scroll.style.cssText='flex:1;overflow:auto;-webkit-overflow-scrolling:touch';
+  const big=document.createElement('img');big.src=img.src;
+  let zoomed=false;
+  const fit=()=>{big.style.cssText='display:block;width:100%;height:auto;margin:0 auto';};
+  const zoom=()=>{big.style.cssText='display:block;width:230%;max-width:none;height:auto';};
+  fit();
+  big.onclick=()=>{zoomed=!zoomed;zoomed?zoom():fit();};
   scroll.appendChild(big);
-  const bar=document.createElement('div');bar.style.cssText='padding:12px;display:flex;justify-content:center';
-  const close=document.createElement('button');close.className='btn btn-ghost';close.style.minWidth='140px';close.textContent=t('close');
-  close.onclick=()=>ov.remove();bar.appendChild(close);
+  const bar=document.createElement('div');bar.style.cssText='padding:10px 12px;display:flex;align-items:center;gap:10px;justify-content:space-between';
+  const hint=document.createElement('span');hint.className='muted';hint.style.cssText='font-size:11px';hint.textContent=(lang==='es'?'Toca para acercar · desliza para mover':'Tap to zoom · drag to pan');
+  const close=document.createElement('button');close.className='btn btn-ghost';close.style.minWidth='110px';close.textContent=t('close');close.onclick=()=>ov.remove();
+  bar.appendChild(hint);bar.appendChild(close);
   ov.appendChild(scroll);ov.appendChild(bar);document.body.appendChild(ov);
 }
 const VER_URL="https://github.com/dioniciogarcia/tirsosiguemuerto/releases/download/app-latest/version.txt";

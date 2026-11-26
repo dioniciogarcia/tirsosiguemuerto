@@ -344,13 +344,15 @@ class Helper:
             return
         try:
             img = pyautogui.screenshot()
-            max_w = int(self.cfg["screenshot_max_width"])
+            # Keep it reasonably sharp: at least 1600px wide / quality 78, even
+            # if an old config.json still has the low values.
+            max_w = max(int(self.cfg.get("screenshot_max_width", 1600)), 1600)
+            quality = max(int(self.cfg.get("screenshot_quality", 78)), 78)
             if img.width > max_w:
                 ratio = max_w / float(img.width)
                 img = img.resize((max_w, int(img.height * ratio)))
             buf = io.BytesIO()
-            img.convert("RGB").save(buf, format="JPEG",
-                                    quality=int(self.cfg["screenshot_quality"]))
+            img.convert("RGB").save(buf, format="JPEG", quality=quality)
             b64 = base64.b64encode(buf.getvalue()).decode("ascii")
             self.fb.put(self.base + "/status/screenshot", {
                 "jpg_b64": b64,
