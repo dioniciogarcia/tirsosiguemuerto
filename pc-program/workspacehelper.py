@@ -368,7 +368,7 @@ class Helper:
             b64 = base64.b64encode(buf.getvalue()).decode("ascii")
             self.fb.put(self.base + "/status/screenshot", {
                 "jpg_b64": b64,
-                "ts": int(time.time()),
+                "ts": int(time.time() * 1000),
             })
             log("Screenshot captured and sent (%d KB)." % (len(b64) // 1024))
         except Exception as e:
