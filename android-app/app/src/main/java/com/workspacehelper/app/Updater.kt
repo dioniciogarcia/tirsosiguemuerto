@@ -55,7 +55,7 @@ object Updater {
             val out = File(dir, "WorkspaceHelper-native.apk")
             val conn = open(APK)
             if (conn.responseCode !in 200..299) { conn.disconnect(); return@withContext null }
-            conn.inputStream.use { inp -> out.outputStream.use { o -> inp.copyTo(o) } }
+            conn.inputStream.use { inp -> out.outputStream().use { o -> inp.copyTo(o) } }
             conn.disconnect()
             if (out.length() < 100_000) return@withContext null  // too small to be a real APK
             out
