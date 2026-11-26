@@ -216,6 +216,12 @@ def fetch_desktime(api_key):
 # ----------------------------------------------------------------------------
 # The worker: does the real actions on this PC
 # ----------------------------------------------------------------------------
+def slugify(text):
+    out = "".join(c.lower() if c.isalnum() else "-" for c in (text or "device"))
+    out = "-".join(part for part in out.split("-") if part)
+    return out or "device"
+
+
 class Helper:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -225,6 +231,10 @@ class Helper:
         self.mouse_timer = None        # threading.Timer to auto-press F9
         self.shutdown_at = None        # "HH:MM" string, or None
         self._last_hours = 0
+        # Each PC lives under devices/<id>/ so several people can share one
+        # database. The id defaults to a slug of the device name.
+        self.device_id = cfg.get("device_id") or slugify(cfg.get("device_name"))
+        self.base = "devices/%s" % self.device_id
 
     # ---- actions ----------------------------------------------------------
     def desktime_is_running(self):
@@ -335,7 +345,7 @@ class Helper:
             img.convert("RGB").save(buf, format="JPEG",
                                     quality=int(self.cfg["screenshot_quality"]))
             b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-            self.fb.put("status/screenshot", {
+            self.fb.put(self.base + "/status/screenshot", {
                 "jpg_b64": b64,
                 "ts": int(time.time()),
             })
@@ -391,7 +401,7 @@ class Helper:
         delay = float(self.cfg["poll_seconds"])
         while self.running:
             try:
-                cmds = self.fb.get("commands")
+                cmds = self.fb.get(self.base + "/commands")
                 if isinstance(cmds, dict):
                     # process oldest first, then delete each
                     for key in sorted(cmds.keys(),
@@ -399,7 +409,7 @@ class Helper:
                                       if isinstance(cmds[k], dict) else 0):
                         self.handle_command(cmds[key])
                         try:
-                            self.fb.delete("commands/%s" % key)
+                            self.fb.delete(self.base + "/commands/%s" % key)
                         except Exception:
                             pass
             except Exception as e:
@@ -415,18 +425,19 @@ class Helper:
                 status = {
                     "online": True,
                     "ts": int(time.time()),
+                    "device_id": self.device_id,
                     "device_name": self.cfg["device_name"],
                     "desktime_running": self.desktime_is_running(),
                     "mouse_running": self.mouse_running,
                     "shutdown_at": self.shutdown_at,
                 }
-                self.fb.patch("status", status)
+                self.fb.patch(self.base + "/status", status)
 
                 now = time.time()
                 if now - last_hours >= hours_every:
                     data = fetch_desktime(self.cfg["desktime_api_key"])
                     if data is not None:
-                        self.fb.put("status/hours", data)
+                        self.fb.put(self.base + "/status/hours", data)
                     last_hours = now
 
                 # scheduled shutdown check
@@ -462,7 +473,8 @@ def run_with_tray(helper):
     def on_quit(icon, item):
         helper.running = False
         try:
-            helper.fb.patch("status", {"online": False, "ts": int(time.time())})
+            helper.fb.patch(helper.base + "/status",
+                            {"online": False, "ts": int(time.time())})
         except Exception:
             pass
         icon.stop()
