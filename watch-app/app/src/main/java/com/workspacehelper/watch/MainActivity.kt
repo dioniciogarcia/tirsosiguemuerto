@@ -29,13 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.foundation.rotary.rotaryScrollable
+import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
@@ -92,20 +90,33 @@ fun WatchScreen(prefs: SharedPreferences) {
     // Pending confirmation: (command type, question label). Null = none.
     var pending by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    suspend fun phoneNode(): String? = withContext(Dispatchers.IO) {
+    var cachedNode by remember { mutableStateOf<String?>(null) }
+    suspend fun phoneNode(force: Boolean = false): String? = withContext(Dispatchers.IO) {
+        if (!force && cachedNode != null) return@withContext cachedNode
         try {
             val nodes = nodeClient.connectedNodes.await()
-            (nodes.firstOrNull { it.isNearby } ?: nodes.firstOrNull())?.id
+            val id = (nodes.firstOrNull { it.isNearby } ?: nodes.firstOrNull())?.id
+            cachedNode = id
+            id
         } catch (e: Exception) { null }
     }
 
     suspend fun send(path: String, payload: String) {
-        val id = phoneNode()
+        var id = phoneNode()
         if (id == null) { connected = false; return }
         try {
             msgClient.sendMessage(id, path, payload.toByteArray()).await()
             if (connected == null) connected = true
-        } catch (e: Exception) { connected = false }
+        } catch (e: Exception) {
+            // Node may have changed; refresh once and retry before giving up.
+            cachedNode = null
+            id = phoneNode(force = true)
+            if (id == null) { connected = false; return }
+            try {
+                msgClient.sendMessage(id, path, payload.toByteArray()).await()
+                if (connected == null) connected = true
+            } catch (e2: Exception) { connected = false }
+        }
     }
 
     fun cmd(type: String) {
@@ -160,12 +171,10 @@ fun WatchScreen(prefs: SharedPreferences) {
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .onRotaryScrollEvent { e ->
-                    scope.launch { listState.scrollBy(e.verticalScrollPixels) }
-                    true
-                }
-                .focusRequester(focusRequester)
-                .focusable(),
+                .rotaryScrollable(
+                    RotaryScrollableDefaults.behavior(scrollableState = listState),
+                    focusRequester = focusRequester
+                ),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
