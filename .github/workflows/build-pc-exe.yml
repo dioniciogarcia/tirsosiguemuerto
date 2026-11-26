@@ -1,0 +1,49 @@
+name: Build WorkspaceHelper.exe
+
+# Builds the Windows program in the cloud on every push, and publishes
+# WorkspaceHelper.exe to a "latest" release you can download.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'pc-program/**'
+      - '.github/workflows/build-pc-exe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: pc-program
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build the .exe
+        working-directory: pc-program
+        run: pyinstaller --noconsole --onefile --name WorkspaceHelper workspacehelper.py
+
+      - name: Upload as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkspaceHelper
+          path: pc-program/dist/WorkspaceHelper.exe
+
+      - name: Publish to the "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          files: pc-program/dist/WorkspaceHelper.exe
