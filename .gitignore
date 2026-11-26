@@ -34,3 +34,6 @@ Thumbs.db
 
 # logs
 *.log
+
+# keep the shared signing key (debug-only, personal project)
+!android-app/app/wh-signing.keystore

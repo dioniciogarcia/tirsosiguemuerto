@@ -24,8 +24,21 @@ android {
         kotlinCompilerExtensionVersion '1.5.14'
     }
 
+    signingConfigs {
+        shared {
+            storeFile file('wh-signing.keystore')
+            storePassword 'workspacehelper'
+            keyAlias 'wh'
+            keyPassword 'workspacehelper'
+        }
+    }
+
     buildTypes {
-        release { minifyEnabled false }
+        debug { signingConfig signingConfigs.shared }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.shared
+        }
     }
 
     compileOptions {
