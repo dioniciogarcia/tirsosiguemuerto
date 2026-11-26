@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WorkspaceHelper</title>
+<style>
+  :root{
+    --bg:#0D0F14; --surface:#171A21; --surface2:#1F232C; --border:#242933;
+    --text:#F4F6FA; --muted:#9AA3B2; --accent:#7C6CF6; --accent2:#A99BFF;
+    --green:#34D399; --rose:#FB7185; --amber:#FBBF24;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,Roboto,"Segoe UI",system-ui,sans-serif;
+    padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  .hidden{display:none!important}
+  button{font-family:inherit;cursor:pointer}
+  .screen{padding:22px 18px 92px;max-width:560px;margin:0 auto}
+  h1{font-size:22px;font-weight:700;margin:0}
+  .muted{color:var(--muted)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px;margin-top:14px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;font-size:12px;font-weight:600}
+  .label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+  .big{font-size:30px;font-weight:700;line-height:1.1}
+  .btn{border:none;border-radius:12px;padding:12px 16px;font-size:13.5px;font-weight:600;min-height:44px}
+  .btn-stop{background:#2A1619;color:var(--rose)}
+  .btn-go{background:#10271F;color:var(--green)}
+  .btn-accent{background:var(--accent);color:#fff}
+  .btn-soft{background:var(--surface2);color:var(--accent2);border:1px solid #2E2655}
+  .btn-ghost{background:transparent;color:#C7CDD9;border:1px solid var(--border)}
+  .btn-wide{width:100%;display:flex;align-items:center;justify-content:center;gap:9px}
+  .chips{display:flex;gap:8px;margin-top:12px}
+  .chip{flex:1;border:1px solid var(--border);background:transparent;color:#C7CDD9;font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 0;min-height:42px}
+  .chip.on{background:#241E3C;border-color:#3B2F63;color:var(--accent2)}
+  .bar{height:7px;border-radius:999px;background:#242935;overflow:hidden;margin-top:6px}
+  .bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),#22D3EE)}
+  input{width:100%;background:#0F1218;border:1px solid var(--border);border-radius:12px;color:var(--text);
+    padding:13px 14px;font-size:14px;margin-top:6px}
+  label.fld{display:block;margin-top:14px;font-size:12.5px;color:var(--muted)}
+  nav{position:fixed;left:0;right:0;bottom:0;height:68px;background:#10131A;border-top:1px solid #1C202A;
+    display:flex;align-items:center;justify-content:space-around;padding-bottom:env(safe-area-inset-bottom)}
+  nav button{background:none;border:none;color:#6B7280;font-size:10.5px;font-weight:600;
+    display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 10px}
+  nav button.on{color:var(--accent2)}
+  nav svg{width:21px;height:21px}
+  .svc{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .list .it{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+  .list .it:first-child{border-top:none}
+  .overlay{position:fixed;inset:0;background:rgba(5,6,9,.74);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
+  .modal{width:100%;max-width:330px;background:#15181F;border:1px solid var(--border);border-radius:22px;padding:24px;text-align:center}
+  .toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:#20242E;border:1px solid var(--border);
+    color:var(--text);padding:11px 16px;border-radius:12px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s}
+  .toast.show{opacity:1}
+  .seg{display:flex;gap:6px;background:#0F1218;border:1px solid var(--border);border-radius:12px;padding:5px;margin-top:8px}
+  .seg button{flex:1;border:none;background:transparent;color:var(--muted);font-weight:600;font-size:12.5px;padding:10px 0;border-radius:9px;min-height:42px}
+  .seg button.on{background:#241E3C;color:var(--accent2)}
+  .ss{width:100%;border-radius:12px;border:1px solid var(--border);margin-top:12px;display:block}
+  .hdr{display:flex;align-items:center;gap:11px}
+  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7C6CF6,#4F46E5);display:flex;align-items:center;justify-content:center;flex:none}
+  select{width:100%;background:#0F1218;border:1px solid var(--border);border-radius:12px;color:var(--text);padding:13px 14px;font-size:14px;margin-top:6px}
+</style>
+</head>
+<body>
+
+<!-- ================= SETUP ================= -->
+<div id="setup" class="screen hidden">
+  <div class="hdr">
+    <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" class="svc" style="stroke:#fff"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg></div>
+    <h1>WorkspaceHelper</h1>
+  </div>
+  <p class="muted" style="margin-top:14px" data-t="setup_intro"></p>
+  <div class="card">
+    <label class="fld"><span data-t="fb_url"></span>
+      <input id="in_url" placeholder="https://your-project-default-rtdb.firebaseio.com" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <label class="fld"><span data-t="fb_secret"></span>
+      <input id="in_secret" placeholder="••••••••" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <button class="btn btn-accent btn-wide" style="margin-top:18px" onclick="saveSetup()" data-t="connect"></button>
+    <p id="setup_err" class="muted" style="color:var(--rose);font-size:12.5px;margin-top:10px"></p>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hidden">
+
+  <!-- HOME -->
+  <section id="s_home" class="screen">
+    <div class="row">
+      <div class="hdr">
+        <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" class="svc" style="stroke:#fff"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg></div>
+        <h1 style="font-size:18px">WorkspaceHelper</h1>
+      </div>
+      <span id="pc_pill" class="pill" style="background:#1A1D25;color:var(--muted)"><span class="dot" style="background:var(--muted)"></span><span id="pc_pill_t">—</span></span>
+    </div>
+
+    <div class="card" style="background:linear-gradient(160deg,#1B1F29,#15181F)">
+      <div class="row" style="align-items:flex-start">
+        <div>
+          <div class="label">DeskTime</div>
+          <div style="display:flex;align-items:center;gap:9px;margin-top:7px">
+            <span id="dt_dot" class="dot" style="background:var(--muted)"></span>
+            <span id="dt_state" class="big" style="font-size:22px" data-t="unknown"></span>
+          </div>
+          <div id="dt_since" class="muted" style="font-size:12.5px;margin-top:4px"></div>
+        </div>
+        <div style="text-align:right">
+          <div id="dt_total" class="big" style="font-size:26px">—</div>
+          <div class="muted" style="font-size:11.5px" data-t="worked_today"></div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="row" style="font-size:11.5px"><span class="muted" data-t="productivity"></span><span id="dt_prod" style="color:#6EE7B7;font-weight:600">—</span></div>
+        <div class="bar"><span id="dt_prod_bar" style="width:0%"></span></div>
+      </div>
+    </div>
+
+    <div class="label" style="margin-top:16px" data-t="controls"></div>
+
+    <!-- DeskTime control -->
+    <div class="card">
+      <div class="row">
+        <div>
+          <div style="font-weight:600;font-size:14.5px" data-t="desktime_proc"></div>
+          <div class="muted" style="font-size:11.5px" data-t="open_close"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-go" onclick="confirmDesktime('start')" data-t="start"></button>
+          <button class="btn btn-stop" onclick="confirmDesktime('stop')" data-t="stop"></button>
+        </div>
+      </div>
+      <div class="chips" id="dt_chips">
+        <button class="chip" onclick="dtTimer(this,15)">15m</button>
+        <button class="chip" onclick="dtTimer(this,30)">30m</button>
+        <button class="chip" onclick="dtTimer(this,60)">1h</button>
+      </div>
+    </div>
+
+    <!-- Mouse control -->
+    <div class="card">
+      <div class="row">
+        <div>
+          <div style="font-weight:600;font-size:14.5px" data-t="mouse_helper"></div>
+          <div class="muted" style="font-size:11.5px" data-t="keeps_active"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-go" id="mouse_go" onclick="mouse('start')" data-t="start"></button>
+          <button class="btn btn-stop" onclick="mouse('stop')" data-t="stop"></button>
+        </div>
+      </div>
+      <div class="chips" id="ms_chips">
+        <button class="chip" onclick="setMouseTimer(this,15)">15m</button>
+        <button class="chip" onclick="setMouseTimer(this,30)">30m</button>
+        <button class="chip" onclick="setMouseTimer(this,60)">1h</button>
+        <button class="chip on" onclick="setMouseTimer(this,0)" data-t="off"></button>
+      </div>
+    </div>
+
+    <button class="btn btn-soft btn-wide" style="margin-top:14px" onclick="go('screen')" data-t="confirm_screen"></button>
+    <button class="btn btn-stop btn-wide" style="margin-top:12px" onclick="panic()" data-t="panic"></button>
+  </section>
+
+  <!-- HOURS -->
+  <section id="s_hours" class="screen hidden">
+    <h1 data-t="desktime_hours"></h1>
+    <div class="card" style="background:linear-gradient(160deg,#1B1F29,#15181F)">
+      <div class="row" style="align-items:flex-end">
+        <div><div class="label" data-t="time_worked"></div><div id="h_total" class="big" style="font-size:36px;margin-top:4px">—</div></div>
+        <div style="text-align:right"><div class="muted" style="font-size:11.5px" data-t="effectiveness"></div><div id="h_eff" class="big" style="font-size:22px;color:#6EE7B7">—</div></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <div class="card" style="flex:1;margin:0;background:#12151C"><div class="muted" style="font-size:11px" data-t="arrived"></div><div id="h_arr" style="font-weight:600;margin-top:2px">—</div></div>
+        <div class="card" style="flex:1;margin:0;background:#12151C"><div class="muted" style="font-size:11px" data-t="left"></div><div id="h_left" style="font-weight:600;margin-top:2px">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row"><span style="font-weight:600;font-size:13px" data-t="productivity"></span><span id="h_prod" style="color:#6EE7B7;font-weight:600">—</span></div>
+      <div class="bar"><span id="h_prod_bar" style="width:0%"></span></div>
+    </div>
+    <button class="btn btn-ghost btn-wide" style="margin-top:14px" onclick="go('projects')" data-t="view_projects"></button>
+  </section>
+
+  <!-- PROJECTS & APPS -->
+  <section id="s_projects" class="screen hidden">
+    <h1 data-t="projects_apps"></h1>
+    <div class="card"><div style="font-weight:600;font-size:13px;margin-bottom:6px" data-t="projects"></div><div id="proj_list" class="list"></div></div>
+    <div class="card"><div style="font-weight:600;font-size:13px;margin-bottom:6px" data-t="top_apps"></div><div id="apps_list" class="list"></div></div>
+    <button class="btn btn-ghost btn-wide" style="margin-top:14px" onclick="go('hours')" data-t="back"></button>
+  </section>
+
+  <!-- SCREEN CHECK -->
+  <section id="s_screen" class="screen hidden">
+    <h1 data-t="screen_check"></h1>
+    <p class="muted" style="font-size:12.5px;margin-top:6px" data-t="screen_note"></p>
+    <button class="btn btn-accent btn-wide" onclick="captureScreen()" data-t="capture"></button>
+    <div class="card"><div class="row"><span style="font-weight:600;font-size:12.5px" data-t="last_capture"></span><span id="ss_time" class="muted" style="font-size:11.5px">—</span></div>
+      <img id="ss_img" class="ss hidden" alt="screenshot">
+      <div id="ss_empty" class="muted" style="font-size:12.5px;margin-top:12px" data-t="no_capture"></div>
+    </div>
+    <button class="btn btn-ghost btn-wide" style="margin-top:14px" onclick="go('home')" data-t="back"></button>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="s_settings" class="screen hidden">
+    <h1 data-t="settings"></h1>
+
+    <div class="card">
+      <div style="font-weight:600;font-size:13px" data-t="device"></div>
+      <select id="dev_select" onchange="selectDevice(this.value)"></select>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:600;font-size:13px" data-t="language"></div>
+      <div class="seg"><button id="lang_en" onclick="setLang('en')">English</button><button id="lang_es" onclick="setLang('es')">Español</button></div>
+    </div>
+
+    <div class="card">
+      <div class="row"><div><div style="font-weight:600;font-size:14px" data-t="require_fp"></div><div class="muted" style="font-size:11.5px" data-t="fp_sub"></div></div>
+        <div class="seg" style="margin:0;width:120px"><button id="fp_on" onclick="setFp(true)" data-t="on"></button><button id="fp_off" onclick="setFp(false)" data-t="off"></button></div></div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:600;font-size:13px" data-t="auto_shutdown"></div>
+      <div class="row" style="margin-top:10px">
+        <input id="shut_time" type="time" style="width:auto;margin:0">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-soft" onclick="setShutdown()" data-t="set"></button>
+          <button class="btn btn-ghost" onclick="cancelShutdown()" data-t="cancel"></button>
+        </div>
+      </div>
+      <div id="shut_state" class="muted" style="font-size:11.5px;margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <div class="row"><div><div style="font-weight:600;font-size:14px" data-t="app_version"></div><div id="ver_line" class="muted" style="font-size:11.5px">v1.0.0</div></div>
+        <button class="btn btn-soft" onclick="checkUpdate()" data-t="check_updates"></button></div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:600;font-size:13px" data-t="connection"></div>
+      <div class="row" style="margin-top:10px"><span class="muted" style="font-size:12.5px" data-t="fb_link"></span><span id="conn_state" class="pill" style="background:#12261B;color:#6EE7B7"><span class="dot" style="background:var(--green)"></span><span data-t="connected"></span></span></div>
+      <button class="btn btn-ghost btn-wide" style="margin-top:12px" onclick="editConnection()" data-t="edit_connection"></button>
+    </div>
+  </section>
+
+  <!-- NAV -->
+  <nav>
+    <button id="n_home" class="on" onclick="go('home')"><svg viewBox="0 0 24 24" class="svc"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span data-t="home"></span></button>
+    <button id="n_hours" onclick="go('hours')"><svg viewBox="0 0 24 24" class="svc"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg><span data-t="hours"></span></button>
+    <button id="n_settings" onclick="go('settings')"><svg viewBox="0 0 24 24" class="svc"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H7a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1 1.6 1.6 0 0 0 .3-1.8"/></svg><span data-t="settings"></span></button>
+  </nav>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ---------------- i18n ----------------
+const T = {
+  en:{setup_intro:"Enter your Firebase connection to link the app to your PC.",fb_url:"Firebase URL",fb_secret:"Firebase secret",connect:"Connect",
+    unknown:"Unknown",worked_today:"worked today",productivity:"Productivity",controls:"Controls",desktime_proc:"DeskTime process",open_close:"Open or close tracking",
+    start:"Start",stop:"Stop",mouse_helper:"Mouse helper · F9",keeps_active:"Keeps the PC active",off:"Off",confirm_screen:"Confirm screen status",panic:"Panic · stop everything",
+    desktime_hours:"DeskTime hours",time_worked:"Time worked",effectiveness:"Effectiveness",arrived:"Arrived",left:"Left",view_projects:"View projects & apps",
+    projects_apps:"Projects & apps",projects:"Projects",top_apps:"Top apps",back:"Back",screen_check:"Screen check",screen_note:"Manual · nothing is captured until you tap.",
+    capture:"Capture screen",last_capture:"Last capture",no_capture:"No capture yet.",settings:"Settings",device:"Device",language:"Language",require_fp:"Fingerprint for DeskTime",
+    fp_sub:"Confirm before start/stop",on:"On",auto_shutdown:"Auto shutdown",set:"Set",cancel:"Cancel",app_version:"App version",check_updates:"Check",connection:"Connection",
+    fb_link:"Firebase link",connected:"Connected",edit_connection:"Edit connection",home:"Home",hours:"Hours",online:"PC online",offline:"PC offline",
+    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device"},
+  es:{setup_intro:"Introduce tu conexión de Firebase para enlazar la app con tu PC.",fb_url:"URL de Firebase",fb_secret:"Secreto de Firebase",connect:"Conectar",
+    unknown:"Desconocido",worked_today:"trabajado hoy",productivity:"Productividad",controls:"Controles",desktime_proc:"Proceso de DeskTime",open_close:"Abrir o cerrar el seguimiento",
+    start:"Iniciar",stop:"Detener",mouse_helper:"Asistente de ratón · F9",keeps_active:"Mantiene la PC activa",off:"Apagado",confirm_screen:"Confirmar estado de pantalla",panic:"Pánico · detener todo",
+    desktime_hours:"Horas de DeskTime",time_worked:"Tiempo trabajado",effectiveness:"Efectividad",arrived:"Llegada",left:"Salida",view_projects:"Ver proyectos y apps",
+    projects_apps:"Proyectos y apps",projects:"Proyectos",top_apps:"Apps más usadas",back:"Atrás",screen_check:"Captura de pantalla",screen_note:"Manual · no se captura nada hasta que pulses.",
+    capture:"Capturar pantalla",last_capture:"Última captura",no_capture:"Aún no hay captura.",settings:"Ajustes",device:"Dispositivo",language:"Idioma",require_fp:"Huella para DeskTime",
+    fp_sub:"Confirmar antes de iniciar/detener",on:"Sí",auto_shutdown:"Apagado automático",set:"Fijar",cancel:"Cancelar",app_version:"Versión de la app",check_updates:"Buscar",connection:"Conexión",
+    fb_link:"Enlace Firebase",connected:"Conectado",edit_connection:"Editar conexión",home:"Inicio",hours:"Horas",online:"PC en línea",offline:"PC sin conexión",
+    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo"}
+};
+let lang = localStorage.getItem('lang') || 'en';
+function t(k){return (T[lang]&&T[lang][k])||k;}
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-t]').forEach(e=>e.textContent=t(e.dataset.t));
+  document.getElementById('lang_en').classList.toggle('on',lang==='en');
+  document.getElementById('lang_es').classList.toggle('on',lang==='es');
+}
+function setLang(l){lang=l;localStorage.setItem('lang',l);applyLang();}
+
+// ---------------- config ----------------
+let cfg = JSON.parse(localStorage.getItem('cfg')||'null');
+let deviceId = localStorage.getItem('deviceId')||'';
+let mouseMinutes = 0, pollTimer=null, latestSS=0;
+const RELEASES="https://github.com/dioniciogarcia/tirsosiguemuerto/releases/latest";
+
+function fbUrl(path){return cfg.url.replace(/\/$/,'')+'/'+path+'.json?auth='+encodeURIComponent(cfg.secret);}
+async function fbGet(path){try{const r=await fetch(fbUrl(path));return await r.json();}catch(e){return undefined;}}
+async function fbPost(path,body){try{await fetch(fbUrl(path),{method:'POST',body:JSON.stringify(body)});return true;}catch(e){return false;}}
+async function fbPut(path,body){try{await fetch(fbUrl(path),{method:'PUT',body:JSON.stringify(body)});return true;}catch(e){return false;}}
+
+// ---------------- setup ----------------
+function saveSetup(){
+  const url=document.getElementById('in_url').value.trim();
+  const secret=document.getElementById('in_secret').value.trim();
+  if(!url||!secret){document.getElementById('setup_err').textContent='⚠';return;}
+  cfg={url,secret};localStorage.setItem('cfg',JSON.stringify(cfg));
+  boot();
+}
+function editConnection(){localStorage.removeItem('cfg');cfg=null;boot();}
+
+// ---------------- navigation ----------------
+function go(name){
+  ['home','hours','projects','screen','settings'].forEach(s=>{
+    document.getElementById('s_'+s).classList.toggle('hidden',s!==name);
+  });
+  ['home','hours','settings'].forEach(n=>{
+    const b=document.getElementById('n_'+n);if(b)b.classList.toggle('on',n===name);
+  });
+  window.scrollTo(0,0);
+}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1600);}
+
+// ---------------- commands ----------------
+async function send(type,args){
+  if(!deviceId){toast(t('pick_device'));go('settings');return;}
+  const ok=await fbPost('devices/'+deviceId+'/commands',{type,args:args||{},ts:Date.now()});
+  toast(ok?t('sent'):'✕');
+}
+function mouse(action){send(action==='start'?'mouse_start':'mouse_stop',{minutes:mouseMinutes});}
+function setMouseTimer(el,m){mouseMinutes=m;document.querySelectorAll('#ms_chips .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
+function dtTimer(el,m){send('desktime_timer',{minutes:m,direction:'open_then_close'});document.querySelectorAll('#dt_chips .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');setTimeout(()=>el.classList.remove('on'),1500);}
+function panic(){send('panic');}
+function setShutdown(){const v=document.getElementById('shut_time').value;if(v){send('shutdown_at',{time:v});document.getElementById('shut_state').textContent='→ '+v;}}
+function cancelShutdown(){send('shutdown_cancel');document.getElementById('shut_state').textContent='';}
+async function captureScreen(){await send('screenshot');toast(t('sent'));}
+
+// fingerprint-gated confirm (biometric hook added natively later)
+let fpOn = localStorage.getItem('fp')!=='0';
+function setFp(v){fpOn=v;localStorage.setItem('fp',v?'1':'0');document.getElementById('fp_on').classList.toggle('on',v);document.getElementById('fp_off').classList.toggle('on',!v);}
+function confirmDesktime(action){
+  if(!fpOn){send(action==='start'?'desktime_start':'desktime_stop');return;}
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML='<div class="modal"><div style="width:54px;height:54px;border-radius:16px;margin:0 auto;background:'+(action==='stop'?'#2A1619':'#10271F')+';display:flex;align-items:center;justify-content:center">'
+    +'<svg width="26" height="26" viewBox="0 0 24 24" class="svc" style="stroke:'+(action==='stop'?'#FB7185':'#34D399')+'"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg></div>'
+    +'<div style="font-size:20px;font-weight:700;margin-top:14px">'+t(action==='stop'?'confirm_close':'confirm_open')+'</div>'
+    +'<div class="muted" style="font-size:13px;margin-top:7px">'+t('confirm_body')+'</div>'
+    +'<button class="btn btn-accent btn-wide" style="margin-top:18px">'+t('confirm')+'</button>'
+    +'<button class="btn btn-ghost btn-wide" style="margin-top:10px">'+t('cancel')+'</button></div>';
+  const btns=ov.querySelectorAll('button');
+  btns[0].onclick=()=>{send(action==='start'?'desktime_start':'desktime_stop');ov.remove();};
+  btns[1].onclick=()=>ov.remove();
+  document.body.appendChild(ov);
+}
+
+// ---------------- devices ----------------
+async function loadDevices(){
+  const devs=await fbGet('devices');
+  const sel=document.getElementById('dev_select');sel.innerHTML='';
+  if(!devs){sel.innerHTML='<option>—</option>';return;}
+  const ids=Object.keys(devs);
+  ids.forEach(id=>{
+    const nm=(devs[id].status&&devs[id].status.device_name)||id;
+    const o=document.createElement('option');o.value=id;o.textContent=nm;sel.appendChild(o);
+  });
+  if(!deviceId||ids.indexOf(deviceId)<0){deviceId=ids[0]||'';localStorage.setItem('deviceId',deviceId);}
+  sel.value=deviceId;
+}
+function selectDevice(id){deviceId=id;localStorage.setItem('deviceId',id);refresh();}
+
+// ---------------- rendering ----------------
+function hms(sec){sec=sec||0;const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);return h+'h '+(m<10?'0':'')+m+'m';}
+async function refresh(){
+  if(!cfg||!deviceId)return;
+  const st=await fbGet('devices/'+deviceId+'/status');
+  const online = st && st.online && (Date.now()/1000 - (st.ts||0) < 30);
+  const pill=document.getElementById('pc_pill');
+  document.getElementById('pc_pill_t').textContent = online? t('online'):t('offline');
+  pill.querySelector('.dot').style.background = online? 'var(--green)':'var(--rose)';
+  pill.style.color = online? '#6EE7B7':'var(--rose)';
+
+  const running = st && st.desktime_running;
+  document.getElementById('dt_dot').style.background = running? 'var(--green)':'var(--muted)';
+  document.getElementById('dt_state').textContent = running? (lang==='es'?'En marcha':'Running') : (lang==='es'?'Detenido':'Stopped');
+
+  const h = st && st.hours;
+  if(h){
+    document.getElementById('dt_total').textContent=hms(h.desktimeTime);
+    document.getElementById('h_total').textContent=hms(h.desktimeTime);
+    const p=Math.round(h.productivity||0);
+    document.getElementById('dt_prod').textContent=p+'%';
+    document.getElementById('dt_prod_bar').style.width=p+'%';
+    document.getElementById('h_prod').textContent=p+'%';
+    document.getElementById('h_prod_bar').style.width=p+'%';
+    document.getElementById('h_eff').textContent=(h.efficiency!=null?Math.round(h.efficiency):'—')+'%';
+    document.getElementById('h_arr').textContent=(h.arrived||'—').slice(11,16)||'—';
+    document.getElementById('h_left').textContent=h.left?h.left.slice(11,16):'—';
+    document.getElementById('dt_since').textContent=(h.arrived?((lang==='es'?'Desde ':'Since ')+h.arrived.slice(11,16)):'');
+    renderProjects(h.projects||[]);renderApps(h.apps||[]);
+  }
+}
+function renderProjects(list){
+  const el=document.getElementById('proj_list');el.innerHTML='';
+  if(!list.length){el.innerHTML='<div class="muted" style="font-size:12.5px;padding:8px 0">—</div>';return;}
+  list.slice(0,6).forEach(p=>{
+    const d=document.createElement('div');d.className='it';
+    d.innerHTML='<span class="dot" style="background:var(--accent)"></span><div style="flex:1;min-width:0"><div style="font-size:13.5px">'+esc(p.task_title||p.project_title||'—')+'</div></div><span class="muted" style="font-size:12.5px">'+hms(p.duration)+'</span>';
+    el.appendChild(d);
+  });
+}
+function renderApps(list){
+  const el=document.getElementById('apps_list');el.innerHTML='';
+  const col={productive:'#34D399',neutral:'#6B7280',unproductive:'#FB7185'};
+  if(!list.length){el.innerHTML='<div class="muted" style="font-size:12.5px;padding:8px 0">—</div>';return;}
+  list.slice(0,8).forEach(a=>{
+    const d=document.createElement('div');d.className='it';
+    d.innerHTML='<span class="dot" style="background:'+(col[a.productivity]||'#6B7280')+'"></span><span style="flex:1;font-size:13.5px">'+esc(a.name||'—')+'</span><span class="muted" style="font-size:12.5px">'+hms(a.duration)+'</span>';
+    el.appendChild(d);
+  });
+}
+function esc(s){return (s+'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+async function pollScreenshot(){
+  if(document.getElementById('s_screen').classList.contains('hidden'))return;
+  const ss=await fbGet('devices/'+deviceId+'/status/screenshot');
+  if(ss&&ss.jpg_b64&&ss.ts!==latestSS){
+    latestSS=ss.ts;
+    const img=document.getElementById('ss_img');
+    img.src='data:image/jpeg;base64,'+ss.jpg_b64;img.classList.remove('hidden');
+    document.getElementById('ss_empty').classList.add('hidden');
+    document.getElementById('ss_time').textContent=new Date(ss.ts*1000).toLocaleTimeString();
+  }
+}
+function checkUpdate(){window.open(RELEASES,'_blank');}
+
+// ---------------- boot ----------------
+async function boot(){
+  applyLang();
+  if(!cfg){document.getElementById('setup').classList.remove('hidden');document.getElementById('app').classList.add('hidden');return;}
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  setFp(fpOn);go('home');
+  await loadDevices();await refresh();
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer=setInterval(()=>{refresh();pollScreenshot();},4000);
+}
+boot();
+</script>
+</body>
+</html>
