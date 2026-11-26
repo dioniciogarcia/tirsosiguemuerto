@@ -1,7 +1,11 @@
 package com.workspacehelper.app;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
@@ -10,9 +14,15 @@ import android.webkit.WebViewClient;
 
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentActivity;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
+import java.util.concurrent.TimeUnit;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -26,10 +36,12 @@ import java.util.concurrent.Executor;
 // an app update.
 public class MainActivity extends FragmentActivity {
     private WebView web;
+    private SharedPreferences prefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        prefs = getSharedPreferences("wh", MODE_PRIVATE);
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -62,6 +74,50 @@ public class MainActivity extends FragmentActivity {
         public String appVersion() {
             return BuildConfig.VERSION_NAME;
         }
+
+        // The web layer pushes the connection here so the background worker and
+        // notification buttons can reach Firebase while the app is closed.
+        @JavascriptInterface
+        public void saveConfig(String url, String secret, String deviceId) {
+            prefs.edit()
+                 .putString("url", url == null ? "" : url)
+                 .putString("secret", secret == null ? "" : secret)
+                 .putString("deviceId", deviceId == null ? "" : deviceId)
+                 .apply();
+        }
+
+        @JavascriptInterface
+        public void setNotifications(final boolean on) {
+            prefs.edit().putBoolean("notif_enabled", on).apply();
+            runOnUiThread(() -> {
+                if (on) {
+                    requestNotifPermission();
+                    scheduleWorker();
+                } else {
+                    cancelWorker();
+                }
+            });
+        }
+    }
+
+    private void requestNotifPermission() {
+        if (Build.VERSION.SDK_INT >= 33
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                   != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
+    }
+
+    private void scheduleWorker() {
+        PeriodicWorkRequest w = new PeriodicWorkRequest.Builder(
+                StatusWorker.class, 15, TimeUnit.MINUTES).build();
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "status-check", ExistingPeriodicWorkPolicy.UPDATE, w);
+    }
+
+    private void cancelWorker() {
+        WorkManager.getInstance(this).cancelUniqueWork("status-check");
     }
 
     private void updateProgress(final int pct) {

@@ -219,6 +219,11 @@
     </div>
 
     <div class="card">
+      <div class="row"><div><div style="font-weight:600;font-size:14px" data-t="notifications"></div><div class="muted" style="font-size:11.5px" data-t="notif_sub"></div></div>
+        <div class="seg" style="margin:0;width:120px"><button id="nt_on" onclick="setNotif(true)" data-t="on"></button><button id="nt_off" onclick="setNotif(false)" data-t="off"></button></div></div>
+    </div>
+
+    <div class="card">
       <div style="font-weight:600;font-size:13px" data-t="auto_shutdown"></div>
       <div class="row" style="margin-top:10px">
         <input id="shut_time" type="time" style="width:auto;margin:0">
@@ -275,7 +280,7 @@ const T = {
     capture:"Capture screen",last_capture:"Last capture",no_capture:"No capture yet.",settings:"Settings",device:"Device",language:"Language",require_fp:"Fingerprint for DeskTime",
     fp_sub:"Confirm before start/stop",on:"On",auto_shutdown:"Auto shutdown",set:"Set",cancel:"Cancel",app_version:"App version",check_updates:"Check",connection:"Connection",
     fb_link:"Firebase link",connected:"Connected",edit_connection:"Edit connection",home:"Home",hours:"Hours",online:"PC online",offline:"PC offline",
-    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device",routines:"Scheduled routines",add_routine:"Add routine",no_routines:"No routines yet",close:"Close",tap_expand:"Tap to open full-size",done:"Done",up_to_date:"You're up to date",updated:"Updated",ago:"ago",days_hint:"Leave days unselected to run every day",appearance:"Appearance",dark:"Dark",light:"Light"},
+    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device",routines:"Scheduled routines",add_routine:"Add routine",no_routines:"No routines yet",close:"Close",tap_expand:"Tap to open full-size",done:"Done",up_to_date:"You're up to date",updated:"Updated",ago:"ago",days_hint:"Leave days unselected to run every day",appearance:"Appearance",dark:"Dark",light:"Light",notifications:"PC offline alerts",notif_sub:"Notify when the PC goes offline"},
   es:{setup_intro:"Introduce tu conexión de Firebase para enlazar la app con tu PC.",fb_url:"URL de Firebase",fb_secret:"Secreto de Firebase",connect:"Conectar",
     unknown:"Desconocido",worked_today:"trabajado hoy",productivity:"Productividad",controls:"Controles",desktime_proc:"Proceso de DeskTime",open_close:"Abrir o cerrar el seguimiento",
     start:"Iniciar",stop:"Detener",mouse_helper:"Asistente de ratón · F9",keeps_active:"Mantiene la PC activa",off:"Apagado",confirm_screen:"Confirmar estado de pantalla",panic:"Pánico · detener todo",
@@ -284,7 +289,7 @@ const T = {
     capture:"Capturar pantalla",last_capture:"Última captura",no_capture:"Aún no hay captura.",settings:"Ajustes",device:"Dispositivo",language:"Idioma",require_fp:"Huella para DeskTime",
     fp_sub:"Confirmar antes de iniciar/detener",on:"Sí",auto_shutdown:"Apagado automático",set:"Fijar",cancel:"Cancelar",app_version:"Versión de la app",check_updates:"Buscar",connection:"Conexión",
     fb_link:"Enlace Firebase",connected:"Conectado",edit_connection:"Editar conexión",home:"Inicio",hours:"Horas",online:"PC en línea",offline:"PC sin conexión",
-    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo",routines:"Rutinas programadas",add_routine:"Añadir rutina",no_routines:"Aún no hay rutinas",close:"Cerrar",tap_expand:"Toca para ver en grande",done:"Hecho",up_to_date:"Ya estás al día",updated:"Actualizado",ago:"atrás",days_hint:"Sin días seleccionados se ejecuta todos los días",appearance:"Apariencia",dark:"Oscuro",light:"Claro"}
+    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo",routines:"Rutinas programadas",add_routine:"Añadir rutina",no_routines:"Aún no hay rutinas",close:"Cerrar",tap_expand:"Toca para ver en grande",done:"Hecho",up_to_date:"Ya estás al día",updated:"Actualizado",ago:"atrás",days_hint:"Sin días seleccionados se ejecuta todos los días",appearance:"Apariencia",dark:"Oscuro",light:"Claro",notifications:"Alertas de PC sin conexión",notif_sub:"Avisar cuando la PC se desconecte"}
 };
 let lang = localStorage.getItem('lang') || 'en';
 function t(k){return (T[lang]&&T[lang][k])||k;}
@@ -367,6 +372,10 @@ async function captureScreen(){await send('screenshot');toast(t('sent'));}
 // fingerprint-gated confirm (biometric hook added natively later)
 let fpOn = localStorage.getItem('fp')!=='0';
 function setFp(v){fpOn=v;localStorage.setItem('fp',v?'1':'0');document.getElementById('fp_on').classList.toggle('on',v);document.getElementById('fp_off').classList.toggle('on',!v);}
+let notifOn = localStorage.getItem('notif')==='1';
+function syncNative(){if(window.Android&&Android.saveConfig&&cfg)Android.saveConfig(cfg.url,cfg.secret,deviceId||'');}
+function setNotifUI(){const a=document.getElementById('nt_on'),b=document.getElementById('nt_off');if(a)a.classList.toggle('on',notifOn);if(b)b.classList.toggle('on',!notifOn);}
+function setNotif(v){notifOn=v;localStorage.setItem('notif',v?'1':'0');setNotifUI();syncNative();if(window.Android&&Android.setNotifications)Android.setNotifications(v);}
 function confirmDesktime(action){
   if(!fpOn){send(action==='start'?'desktime_start':'desktime_stop');return;}
   if(window.Android&&Android.authenticate){Android.authenticate(action);return;}
@@ -396,7 +405,7 @@ async function loadDevices(){
   if(!deviceId||ids.indexOf(deviceId)<0){deviceId=ids[0]||'';localStorage.setItem('deviceId',deviceId);}
   sel.value=deviceId;
 }
-function selectDevice(id){deviceId=id;localStorage.setItem('deviceId',id);refresh();}
+function selectDevice(id){deviceId=id;localStorage.setItem('deviceId',id);syncNative();refresh();}
 
 // ---------------- rendering ----------------
 function hms(sec){sec=sec||0;const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);return h+'h '+(m<10?'0':'')+m+'m';}
@@ -557,6 +566,8 @@ async function boot(){
   document.getElementById('app').classList.remove('hidden');
   setFp(fpOn);go('home');
   await loadDevices();await refresh();
+  syncNative();setNotifUI();
+  if(notifOn&&window.Android&&Android.setNotifications)Android.setNotifications(true);
   if(pollTimer)clearInterval(pollTimer);
   pollTimer=setInterval(()=>{refresh();pollScreenshot();},4000);
 }
