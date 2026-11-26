@@ -4,12 +4,12 @@ WorkspaceHelper - PC side
 A small background program for your Windows work PC. It runs quietly in the
 system tray (next to the clock) and does what the phone/watch app asks:
 
-  - open or close DeskTime
-  - press F9 to start/stop the mouse helper, with an optional timer
+  - open or close DeskTime (with an optional timer)
   - read your DeskTime hours / projects / apps (official DeskTime API)
   - take an on-demand screenshot
   - schedule a shutdown
-  - "panic": stop DeskTime and the mouse helper at once
+  - "panic": stop DeskTime
+  - adds itself to Windows startup so it launches automatically at sign-in
 
 It talks to the phone through a free Firebase Realtime Database, so it works
 from anywhere with no router setup and no IP tracking.
@@ -231,9 +231,10 @@ class Helper:
         self.cfg = cfg
         self.fb = Firebase(cfg["firebase_url"], cfg.get("firebase_secret", ""))
         self.running = True
-        self.mouse_running = False
-        self.mouse_timer = None        # threading.Timer to auto-press F9
         self.shutdown_at = None        # "HH:MM" string, or None
+        # Remembered DeskTime.exe location (filled when DeskTime is detected
+        # running, so "open" works even if the config path is wrong).
+        self._desktime_path = cfg.get("desktime_exe_path", "") or ""
         self._last_hours = 0
         self.last_hours_data = None     # most recent DeskTime hours payload
         # Each PC lives under devices/<id>/ so several people can share one
@@ -249,22 +250,70 @@ class Helper:
         if not psutil:
             return None
         name = self.cfg["desktime_process_name"].lower()
-        for p in psutil.process_iter(["name"]):
+        for p in psutil.process_iter(["name", "exe"]):
             try:
                 if (p.info["name"] or "").lower() == name:
+                    # Remember where DeskTime lives so "open" always works.
+                    exe = p.info.get("exe")
+                    if exe and os.path.exists(exe):
+                        self._desktime_path = exe
                     return True
             except Exception:
                 pass
         return False
 
+    def _resolve_desktime_path(self):
+        """Find DeskTime.exe even if the configured path is wrong."""
+        name = self.cfg.get("desktime_process_name", "DeskTime.exe")
+        # 1. Remembered / configured path
+        for p in (self._desktime_path, self.cfg.get("desktime_exe_path", "")):
+            if p and os.path.exists(p):
+                return p
+        # 2. If it's running right now, take its real path
+        if psutil:
+            try:
+                for p in psutil.process_iter(["name", "exe"]):
+                    if (p.info.get("name") or "").lower() == name.lower():
+                        exe = p.info.get("exe")
+                        if exe and os.path.exists(exe):
+                            return exe
+            except Exception:
+                pass
+        # 3. Common install locations
+        envs = [os.environ.get("LOCALAPPDATA", ""), os.environ.get("APPDATA", ""),
+                os.environ.get("ProgramFiles", ""), os.environ.get("ProgramFiles(x86)", "")]
+        subdirs = ["DeskTime", r"Programs\DeskTime", r"DeskTime\app", ""]
+        for base in envs:
+            for sub in subdirs:
+                cand = os.path.join(base, sub, name) if sub else os.path.join(base, name)
+                if cand and os.path.exists(cand):
+                    return cand
+        # 4. Shallow search of those roots
+        for base in envs:
+            if not base or not os.path.isdir(base):
+                continue
+            try:
+                for root, dirs, files in os.walk(base):
+                    if root[len(base):].count(os.sep) > 3:
+                        dirs[:] = []
+                        continue
+                    for f in files:
+                        if f.lower() == name.lower():
+                            return os.path.join(root, f)
+            except Exception:
+                pass
+        return ""
+
     def desktime_start(self):
-        path = self.cfg.get("desktime_exe_path", "")
-        if not path or not os.path.exists(path):
-            log("Cannot open DeskTime: desktime_exe_path is missing/wrong.")
+        path = self._resolve_desktime_path()
+        if not path:
+            log("Cannot open DeskTime: DeskTime.exe not found. Set "
+                "desktime_exe_path in config.json to the real location.")
             return
         try:
             subprocess.Popen([path])
-            log("DeskTime opened.")
+            self._desktime_path = path
+            log("DeskTime opened from: %s" % path)
         except Exception as e:
             log("Failed to open DeskTime: %s" % e)
 
@@ -282,44 +331,6 @@ class Helper:
             except Exception:
                 pass
         log("DeskTime stopped (%d process(es))." % killed)
-
-    def press_f9(self):
-        if not pyautogui:
-            log("Cannot press F9: pyautogui not installed.")
-            return
-        try:
-            pyautogui.press("f9")
-            log("Pressed F9.")
-        except Exception as e:
-            log("Failed to press F9: %s" % e)
-
-    def mouse_start(self, minutes=0):
-        self._cancel_mouse_timer()
-        self.press_f9()
-        self.mouse_running = True
-        minutes = int(minutes or 0)
-        if minutes > 0:
-            self.mouse_timer = threading.Timer(minutes * 60, self.mouse_stop)
-            self.mouse_timer.daemon = True
-            self.mouse_timer.start()
-            log("Mouse helper started for %d min." % minutes)
-        else:
-            log("Mouse helper started (no timer).")
-
-    def mouse_stop(self):
-        self._cancel_mouse_timer()
-        if self.mouse_running:
-            self.press_f9()
-        self.mouse_running = False
-        log("Mouse helper stopped.")
-
-    def _cancel_mouse_timer(self):
-        if self.mouse_timer:
-            try:
-                self.mouse_timer.cancel()
-            except Exception:
-                pass
-            self.mouse_timer = None
 
     def desktime_timer(self, minutes, direction=None):
         """Open-now-close-later, or close-now-reopen-later."""
@@ -376,8 +387,7 @@ class Helper:
         log("Shutdown cancelled.")
 
     def panic(self):
-        log("PANIC: stopping DeskTime and mouse helper.")
-        self.mouse_stop()
+        log("PANIC: stopping DeskTime.")
         self.desktime_stop()
 
     # ---- scheduled routines ----------------------------------------------
@@ -417,8 +427,6 @@ class Helper:
             self.desktime_start()
         elif rtype == "desktime_close":
             self.desktime_stop()
-        elif rtype == "mouse_start":
-            self.mouse_start(r.get("minutes", 0))
         elif rtype == "shutdown":
             os.system("shutdown /s /t 60")
 
@@ -433,10 +441,6 @@ class Helper:
             self.desktime_stop()
         elif ctype == "desktime_timer":
             self.desktime_timer(args.get("minutes", 0), args.get("direction"))
-        elif ctype == "mouse_start":
-            self.mouse_start(args.get("minutes", 0))
-        elif ctype == "mouse_stop":
-            self.mouse_stop()
         elif ctype == "screenshot":
             self.take_screenshot()
         elif ctype == "shutdown_at":
@@ -503,7 +507,6 @@ class Helper:
                     "device_id": self.device_id,
                     "device_name": self.cfg["device_name"],
                     "desktime_running": self.desktime_is_running(),
-                    "mouse_running": self.mouse_running,
                     "shutdown_at": self.shutdown_at,
                 }
                 self.fb.patch(self.base + "/status", status)
@@ -549,43 +552,6 @@ def make_tray_image():
 
 
 def run_with_tray(helper):
-    def status_text():
-        running = helper.desktime_is_running()
-        dt_txt = "on" if running else ("off" if running is not None else "unknown")
-        lines = [
-            "Device: %s" % helper.cfg["device_name"],
-            "DeskTime: %s" % dt_txt,
-            "Mouse helper: %s" % ("on" if helper.mouse_running else "off"),
-        ]
-        h = helper.last_hours_data or {}
-        secs = int(h.get("desktimeTime", 0) or 0)
-        if secs:
-            lines.append("Worked today: %dh %02dm" % (secs // 3600, (secs % 3600) // 60))
-            prod = h.get("productivity")
-            if prod is not None:
-                lines.append("Productivity: %d%%" % int(prod))
-        if helper.shutdown_at:
-            lines.append("Shutdown scheduled: %s" % helper.shutdown_at)
-        lines.append("")
-        lines.append("Control everything from the phone app.")
-        return "\n".join(lines)
-
-    def on_status(icon, item):
-        threading.Thread(target=lambda: msgbox(status_text(), "WorkspaceHelper status"),
-                         daemon=True).start()
-
-    def on_open_dt(icon, item):
-        helper.desktime_start()
-
-    def on_close_dt(icon, item):
-        helper.desktime_stop()
-
-    def on_mouse_on(icon, item):
-        helper.mouse_start(60)
-
-    def on_mouse_off(icon, item):
-        helper.mouse_stop()
-
     def on_quit(icon, item):
         helper.running = False
         try:
@@ -595,20 +561,33 @@ def run_with_tray(helper):
             pass
         icon.stop()
 
+    # Minimal menu: clicking the icon does nothing; everything is controlled
+    # from the phone. Only Quit is kept so it can be closed.
     menu = pystray.Menu(
-        # default=True => a left-click on the tray icon shows the status popup
-        pystray.MenuItem("Show status", on_status, default=True),
-        pystray.Menu.SEPARATOR,
-        pystray.MenuItem("Open DeskTime", on_open_dt),
-        pystray.MenuItem("Close DeskTime", on_close_dt),
-        pystray.MenuItem("Mouse helper (1h)", on_mouse_on),
-        pystray.MenuItem("Stop mouse helper", on_mouse_off),
-        pystray.Menu.SEPARATOR,
+        pystray.MenuItem("WorkspaceHelper (running)", None, enabled=False),
         pystray.MenuItem("Quit", on_quit),
     )
     icon = pystray.Icon("WorkspaceHelper", make_tray_image(),
                         "WorkspaceHelper", menu)
     icon.run()
+
+
+def register_startup():
+    """Add WorkspaceHelper to Windows startup for the current user so it
+    launches automatically at sign-in. Runs only for the built .exe."""
+    if os.name != "nt" or not getattr(sys, "frozen", False):
+        return
+    try:
+        import winreg
+        exe = sys.executable
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                            r"Software\Microsoft\Windows\CurrentVersion\Run",
+                            0, winreg.KEY_SET_VALUE) as key:
+            winreg.SetValueEx(key, "WorkspaceHelper", 0, winreg.REG_SZ,
+                              '"%s"' % exe)
+        log("Registered to start with Windows: %s" % exe)
+    except Exception as e:
+        log("Could not register startup: %s" % e)
 
 
 def main():
@@ -618,6 +597,7 @@ def main():
                "is in the SAME folder as WorkspaceHelper.exe:\n\n%s" % CONFIG_PATH)
         sys.exit(1)
 
+    register_startup()
     helper = Helper(cfg)
     helper.start()
 

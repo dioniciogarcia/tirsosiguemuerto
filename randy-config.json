@@ -1,0 +1,21 @@
+{
+  "_comment_1": "Randy's config. Put this file (renamed to config.json) in the SAME folder as WorkspaceHelper.exe on Randy's work PC.",
+  "_comment_2": "Only ONE line is missing: firebase_secret. Open YOUR OWN config.json, copy the value of firebase_secret, and paste it below. Everything else is ready.",
+
+  "firebase_url": "https://tirsosiguemuerto-default-rtdb.firebaseio.com",
+  "firebase_secret": "PASTE_THE_SAME_firebase_secret_FROM_YOUR_OWN_config.json",
+
+  "desktime_api_key": "ef46e6bca83868b0a827f6ab4df7fc38",
+
+  "desktime_exe_path": "C:\\Program Files (x86)\\DeskTime\\DeskTime.exe",
+  "desktime_process_name": "DeskTime.exe",
+
+  "device_name": "Randy PC",
+  "timer_default_direction": "open_then_close",
+
+  "poll_seconds": 1.5,
+  "heartbeat_seconds": 5,
+  "hours_refresh_seconds": 60,
+  "screenshot_max_width": 1600,
+  "screenshot_quality": 78
+}

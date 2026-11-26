@@ -327,13 +327,6 @@ fun HomeScreen(status: JSONObject?, cmd: (String, String) -> Unit, cmdAuth: (Str
             onStop = { cmdAuth("desktime_stop", "{}", Lang.t("Confirm closing DeskTime", "Confirma cerrar DeskTime")) },
             onTimer = { m -> cmd("desktime_timer", """{"minutes":$m,"direction":"open_then_close"}""") }
         )
-        Spacer(Modifier.height(9.dp))
-        ControlCard(
-            title = Lang.t("Mouse helper · F9", "Asistente de ratón · F9"), subtitle = Lang.t("Keeps the PC active", "Mantiene la PC activa"),
-            icon = Icons.Filled.Mouse, iconBg = Color(0xFF122A24), iconTint = Green,
-            onStart = { cmd("mouse_start", """{"minutes":0}""") }, onStop = { cmd("mouse_stop", "{}") },
-            onTimer = { m -> cmd("mouse_start", """{"minutes":$m}""") }
-        )
         Spacer(Modifier.height(11.dp))
 
         ScreenshotButton()
@@ -765,7 +758,6 @@ fun RoutinesCard() {
     val actions = listOf(
         "desktime_open" to Lang.t("Open DeskTime", "Abrir DeskTime"),
         "desktime_close" to Lang.t("Close DeskTime", "Cerrar DeskTime"),
-        "mouse_start" to Lang.t("Mouse helper 1h", "Asistente ratón 1h"),
         "shutdown" to Lang.t("Shut down PC", "Apagar PC"))
     val dayLetters = listOf("M", "T", "W", "T", "F", "S", "S")
     fun actionLabel(a: String) = actions.firstOrNull { it.first == a }?.second ?: a
@@ -857,8 +849,7 @@ fun RoutinesCard() {
                 Button(onClick = {
                     val daysJson = if (days.isNotEmpty())
                         ""","days":[${days.sorted().joinToString(",")}]""" else ""
-                    val minutes = if (action == "mouse_start") ""","minutes":60""" else ""
-                    val body = """{"type":"$action","time":"$time","enabled":true$daysJson$minutes}"""
+                    val body = """{"type":"$action","time":"$time","enabled":true$daysJson}"""
                     scope.launch { Repo.addRoutine(body); days = emptySet(); showAdd = false; reload() }
                 }, modifier = Modifier.fillMaxWidth()) { Text(Lang.t("Add routine", "Agregar rutina")) }
             }
