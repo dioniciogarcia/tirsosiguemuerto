@@ -155,16 +155,20 @@ class Firebase:
 # ----------------------------------------------------------------------------
 # DeskTime official API
 # ----------------------------------------------------------------------------
-def fetch_desktime(api_key):
-    """Return the day's DeskTime summary, projects, and apps, or None.
+def fetch_desktime(api_key, date=None):
+    """Return a day's DeskTime summary, projects, and apps, or None.
 
     The /employee endpoint already includes projects and apps, and it
-    authenticates with the apiKey as a query parameter.
+    authenticates with the apiKey as a query parameter. Pass date ("Y-m-d")
+    for a past day; omit for today.
     """
     base = "https://desktime.com/api/v2/json"
+    params = {"apiKey": api_key}
+    if date:
+        params["date"] = date
     try:
         r = requests.get("%s/employee" % base,
-                         params={"apiKey": api_key},
+                         params=params,
                          headers={"Accept": "application/json"},
                          timeout=20)
         data = r.json()
@@ -438,8 +442,22 @@ class Helper:
             self.cancel_shutdown()
         elif ctype == "panic":
             self.panic()
+        elif ctype == "fetch_history":
+            self.fetch_history(args.get("date"))
         else:
             log("Unknown command type: %s" % ctype)
+
+    def fetch_history(self, date):
+        """Fetch a past day's DeskTime data and store it under history/<date>."""
+        if not date:
+            return
+        data = fetch_desktime(self.cfg["desktime_api_key"], date)
+        if data is not None:
+            try:
+                self.fb.put(self.base + "/history/" + date, data)
+                log("Stored DeskTime history for %s" % date)
+            except Exception as e:
+                log("Failed to store history: %s" % e)
 
     # ---- background loops -------------------------------------------------
     def poll_commands_loop(self):

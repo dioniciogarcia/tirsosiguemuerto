@@ -163,6 +163,7 @@
   <!-- HOURS -->
   <section id="s_hours" class="screen hidden">
     <h1 data-t="desktime_hours"></h1>
+    <input id="hours_date" type="date" onchange="changeDate(this.value)" style="width:auto;margin:10px 0 0;background:var(--field);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:10px 12px;font-size:14px">
     <div class="card" style="background:linear-gradient(160deg,var(--hero1),var(--hero2))">
       <div class="row" style="align-items:flex-end">
         <div><div class="label" data-t="time_worked"></div><div id="h_total" class="big" style="font-size:36px;margin-top:4px">—</div></div>
@@ -280,7 +281,7 @@ const T = {
     capture:"Capture screen",last_capture:"Last capture",no_capture:"No capture yet.",settings:"Settings",device:"Device",language:"Language",require_fp:"Fingerprint for DeskTime",
     fp_sub:"Confirm before start/stop",on:"On",auto_shutdown:"Auto shutdown",set:"Set",cancel:"Cancel",app_version:"App version",check_updates:"Check",connection:"Connection",
     fb_link:"Firebase link",connected:"Connected",edit_connection:"Edit connection",home:"Home",hours:"Hours",online:"PC online",offline:"PC offline",
-    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device",routines:"Scheduled routines",add_routine:"Add routine",no_routines:"No routines yet",close:"Close",tap_expand:"Tap to open full-size",done:"Done",up_to_date:"You're up to date",updated:"Updated",ago:"ago",days_hint:"Leave days unselected to run every day",appearance:"Appearance",dark:"Dark",light:"Light",notifications:"PC offline alerts",notif_sub:"Notify when the PC goes offline"},
+    confirm_close:"Close DeskTime?",confirm_open:"Open DeskTime?",confirm_body:"This changes tracking on the PC.",confirm:"Confirm",sent:"Command sent",pick_device:"Select a device",routines:"Scheduled routines",add_routine:"Add routine",no_routines:"No routines yet",close:"Close",tap_expand:"Tap to open full-size",done:"Done",up_to_date:"You're up to date",updated:"Updated",ago:"ago",days_hint:"Leave days unselected to run every day",appearance:"Appearance",dark:"Dark",light:"Light",notifications:"PC offline alerts",notif_sub:"Notify when the PC goes offline",share:"Share",share_entry:"Share entry"},
   es:{setup_intro:"Introduce tu conexión de Firebase para enlazar la app con tu PC.",fb_url:"URL de Firebase",fb_secret:"Secreto de Firebase",connect:"Conectar",
     unknown:"Desconocido",worked_today:"trabajado hoy",productivity:"Productividad",controls:"Controles",desktime_proc:"Proceso de DeskTime",open_close:"Abrir o cerrar el seguimiento",
     start:"Iniciar",stop:"Detener",mouse_helper:"Asistente de ratón · F9",keeps_active:"Mantiene la PC activa",off:"Apagado",confirm_screen:"Confirmar estado de pantalla",panic:"Pánico · detener todo",
@@ -289,7 +290,7 @@ const T = {
     capture:"Capturar pantalla",last_capture:"Última captura",no_capture:"Aún no hay captura.",settings:"Ajustes",device:"Dispositivo",language:"Idioma",require_fp:"Huella para DeskTime",
     fp_sub:"Confirmar antes de iniciar/detener",on:"Sí",auto_shutdown:"Apagado automático",set:"Fijar",cancel:"Cancelar",app_version:"Versión de la app",check_updates:"Buscar",connection:"Conexión",
     fb_link:"Enlace Firebase",connected:"Conectado",edit_connection:"Editar conexión",home:"Inicio",hours:"Horas",online:"PC en línea",offline:"PC sin conexión",
-    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo",routines:"Rutinas programadas",add_routine:"Añadir rutina",no_routines:"Aún no hay rutinas",close:"Cerrar",tap_expand:"Toca para ver en grande",done:"Hecho",up_to_date:"Ya estás al día",updated:"Actualizado",ago:"atrás",days_hint:"Sin días seleccionados se ejecuta todos los días",appearance:"Apariencia",dark:"Oscuro",light:"Claro",notifications:"Alertas de PC sin conexión",notif_sub:"Avisar cuando la PC se desconecte"}
+    confirm_close:"¿Cerrar DeskTime?",confirm_open:"¿Abrir DeskTime?",confirm_body:"Esto cambia el seguimiento en la PC.",confirm:"Confirmar",sent:"Comando enviado",pick_device:"Selecciona un dispositivo",routines:"Rutinas programadas",add_routine:"Añadir rutina",no_routines:"Aún no hay rutinas",close:"Cerrar",tap_expand:"Toca para ver en grande",done:"Hecho",up_to_date:"Ya estás al día",updated:"Actualizado",ago:"atrás",days_hint:"Sin días seleccionados se ejecuta todos los días",appearance:"Apariencia",dark:"Oscuro",light:"Claro",notifications:"Alertas de PC sin conexión",notif_sub:"Avisar cuando la PC se desconecte",share:"Compartir",share_entry:"Compartir entrada"}
 };
 let lang = localStorage.getItem('lang') || 'en';
 function t(k){return (T[lang]&&T[lang][k])||k;}
@@ -312,7 +313,7 @@ function setTheme(mode){
 // ---------------- config ----------------
 let cfg = JSON.parse(localStorage.getItem('cfg')||'null');
 let deviceId = localStorage.getItem('deviceId')||'';
-let mouseMinutes = 0, pollTimer=null, latestSS=0;
+let mouseMinutes = 0, pollTimer=null, latestSS=0, todayHours=null, hoursDate='';
 const RELEASES="https://github.com/dioniciogarcia/tirsosiguemuerto/releases/latest";
 
 function fbUrl(path){return cfg.url.replace(/\/$/,'')+'/'+path+'.json?auth='+encodeURIComponent(cfg.secret);}
@@ -431,28 +432,73 @@ async function refresh(){
 
   const h = st && st.hours;
   if(h){
+    todayHours=h;
     document.getElementById('dt_total').textContent=hms(h.desktimeTime);
-    document.getElementById('h_total').textContent=hms(h.desktimeTime);
     const p=Math.round(h.productivity||0);
     document.getElementById('dt_prod').textContent=p+'%';
     document.getElementById('dt_prod_bar').style.width=p+'%';
-    document.getElementById('h_prod').textContent=p+'%';
-    document.getElementById('h_prod_bar').style.width=p+'%';
-    document.getElementById('h_eff').textContent=(h.efficiency!=null?Math.round(h.efficiency):'—')+'%';
-    document.getElementById('h_arr').textContent=(h.arrived||'—').slice(11,16)||'—';
-    document.getElementById('h_left').textContent=h.left?h.left.slice(11,16):'—';
     document.getElementById('dt_since').textContent=(h.arrived?((lang==='es'?'Desde ':'Since ')+h.arrived.slice(11,16)):'');
-    renderProjects(h.projects||[]);renderApps(h.apps||[]);
+    if(!hoursDate||hoursDate===todayStr())renderHoursData(h);
   }
+}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function renderHoursData(h){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  if(!h){set('h_total','—');set('h_eff','—');set('h_arr','—');set('h_left','—');set('h_prod','—');
+    const b=document.getElementById('h_prod_bar');if(b)b.style.width='0%';renderProjects([]);renderApps([]);return;}
+  set('h_total',hms(h.desktimeTime));
+  const p=Math.round(h.productivity||0);
+  set('h_prod',p+'%');const b=document.getElementById('h_prod_bar');if(b)b.style.width=p+'%';
+  set('h_eff',(h.efficiency!=null?Math.round(h.efficiency):'—')+'%');
+  set('h_arr',h.arrived?h.arrived.slice(11,16):'—');
+  set('h_left',h.left?h.left.slice(11,16):'—');
+  renderProjects(h.projects||[]);renderApps(h.apps||[]);
+}
+async function changeDate(date){
+  hoursDate=date;
+  if(date===todayStr()){renderHoursData(todayHours);return;}
+  renderHoursData(null);document.getElementById('h_total').textContent='…';
+  await send('fetch_history',{date});
+  let tries=0;
+  const iv=setInterval(async()=>{tries++;
+    const h=await fbGet('devices/'+deviceId+'/history/'+date);
+    if(h&&hoursDate===date){clearInterval(iv);renderHoursData(h);}
+    else if(tries>=8){clearInterval(iv);if(hoursDate===date)document.getElementById('h_total').textContent='—';}
+  },1500);
 }
 function renderProjects(list){
   const el=document.getElementById('proj_list');el.innerHTML='';
   if(!list.length){el.innerHTML='<div class="muted" style="font-size:12.5px;padding:8px 0">—</div>';return;}
-  list.slice(0,6).forEach(p=>{
+  list.slice(0,8).forEach(p=>{
     const d=document.createElement('div');d.className='it';
     d.innerHTML='<span class="dot" style="background:var(--accent)"></span><div style="flex:1;min-width:0"><div style="font-size:13.5px">'+esc(p.task_title||p.project_title||'—')+'</div></div><span class="muted" style="font-size:12.5px">'+hms(p.duration)+'</span>';
+    const sh=document.createElement('button');sh.className='btn btn-ghost';sh.style.cssText='padding:6px 9px;min-height:32px;font-size:13px;margin-left:8px';sh.textContent='↗';sh.setAttribute('aria-label',t('share'));
+    sh.onclick=()=>shareEntry(p);d.appendChild(sh);
     el.appendChild(d);
   });
+}
+function shareEntry(p){
+  const name=p.task_title||p.project_title||'DeskTime entry';
+  const dur=hms(p.duration);
+  const dateStr=hoursDate||todayStr();
+  const draft=name+' - [start] - [end]\n('+dur+' on '+dateStr+')\n* Ticket #';
+  openShareDialog(draft);
+}
+function openShareDialog(text){
+  const ov=document.createElement('div');ov.className='overlay';ov.style.zIndex='85';
+  ov.innerHTML='<div class="modal" style="max-width:360px;text-align:left"><div style="font-weight:700;font-size:15px;margin-bottom:10px">'+t('share_entry')+'</div>'
+    +'<textarea id="share_ta" style="width:100%;height:120px;background:var(--field);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:12px;font-size:13px;font-family:inherit;resize:none"></textarea>'
+    +'<button class="btn btn-accent btn-wide" id="share_go" style="margin-top:12px">'+t('share')+'</button>'
+    +'<button class="btn btn-ghost btn-wide" id="share_cancel" style="margin-top:8px">'+t('cancel')+'</button></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#share_ta').value=text;
+  ov.querySelector('#share_go').onclick=()=>{nativeShare(ov.querySelector('#share_ta').value);ov.remove();};
+  ov.querySelector('#share_cancel').onclick=()=>ov.remove();
+}
+function nativeShare(text){
+  if(window.Android&&Android.shareText)Android.shareText(text);
+  else if(navigator.share)navigator.share({text:text}).catch(()=>{});
+  else toast('✕');
 }
 function renderApps(list){
   const el=document.getElementById('apps_list');el.innerHTML='';
@@ -565,6 +611,7 @@ async function boot(){
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   setFp(fpOn);go('home');
+  hoursDate=todayStr();const hd=document.getElementById('hours_date');if(hd)hd.value=hoursDate;
   await loadDevices();await refresh();
   syncNative();setNotifUI();
   if(notifOn&&window.Android&&Android.setNotifications)Android.setNotifications(true);

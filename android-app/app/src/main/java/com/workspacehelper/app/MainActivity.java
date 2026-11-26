@@ -75,6 +75,16 @@ public class MainActivity extends FragmentActivity {
             return BuildConfig.VERSION_NAME;
         }
 
+        @JavascriptInterface
+        public void shareText(final String text) {
+            runOnUiThread(() -> {
+                Intent i = new Intent(Intent.ACTION_SEND);
+                i.setType("text/plain");
+                i.putExtra(Intent.EXTRA_TEXT, text);
+                startActivity(Intent.createChooser(i, "Share"));
+            });
+        }
+
         // The web layer pushes the connection here so the background worker and
         // notification buttons can reach Firebase while the app is closed.
         @JavascriptInterface
