@@ -32,6 +32,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -95,6 +96,20 @@ object Repo {
     suspend fun getHistory(date: String): JSONObject? = withContext(Dispatchers.IO) {
         val r = Net.get(fb("devices/${deviceId()}/history/$date")) ?: return@withContext null
         try { if (r == "null") null else JSONObject(r) } catch (e: Exception) { null }
+    }
+
+    suspend fun getRoutines(): JSONObject? = withContext(Dispatchers.IO) {
+        val r = Net.get(fb("devices/${deviceId()}/routines")) ?: return@withContext null
+        try { if (r == "null") null else JSONObject(r) } catch (e: Exception) { null }
+    }
+    suspend fun addRoutine(body: String) = withContext(Dispatchers.IO) {
+        Net.post(fb("devices/${deviceId()}/routines"), body)
+    }
+    suspend fun deleteRoutine(key: String) = withContext(Dispatchers.IO) {
+        Net.req("DELETE", fb("devices/${deviceId()}/routines/$key"), null)
+    }
+    suspend fun setRoutineEnabled(key: String, enabled: Boolean) = withContext(Dispatchers.IO) {
+        Net.req("PUT", fb("devices/${deviceId()}/routines/$key/enabled"), if (enabled) "true" else "false")
     }
 }
 
@@ -602,6 +617,9 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
         }
         Spacer(Modifier.height(12.dp))
 
+        RoutinesCard()
+        Spacer(Modifier.height(12.dp))
+
         Card(shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("Connection", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -620,6 +638,118 @@ fun SegButton(text: String, selected: Boolean, modifier: Modifier = Modifier, on
         Button(onClick = onClick, modifier = modifier.height(44.dp)) { Text(text) }
     } else {
         OutlinedButton(onClick = onClick, modifier = modifier.height(44.dp)) { Text(text) }
+    }
+}
+
+@Composable
+fun RoutinesCard() {
+    val scope = rememberCoroutineScope()
+    val ctx = LocalContext.current
+    var routines by remember { mutableStateOf<JSONObject?>(null) }
+    var showAdd by remember { mutableStateOf(false) }
+    var time by remember { mutableStateOf("18:30") }
+    var action by remember { mutableStateOf("desktime_close") }
+    var days by remember { mutableStateOf(setOf<Int>()) }
+    var actionExpanded by remember { mutableStateOf(false) }
+    val actions = listOf(
+        "desktime_open" to "Open DeskTime",
+        "desktime_close" to "Close DeskTime",
+        "mouse_start" to "Mouse helper 1h",
+        "shutdown" to "Shut down PC")
+    val dayLetters = listOf("M", "T", "W", "T", "F", "S", "S")
+    fun actionLabel(a: String) = actions.firstOrNull { it.first == a }?.second ?: a
+    fun reload() { scope.launch { routines = Repo.getRoutines() } }
+    LaunchedEffect(Unit) { reload() }
+
+    Card(shape = RoundedCornerShape(18.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Scheduled routines", fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f))
+                IconButton(onClick = { showAdd = !showAdd }) {
+                    Icon(if (showAdd) Icons.Filled.Close else Icons.Filled.Add,
+                        contentDescription = "Add routine")
+                }
+            }
+            val r = routines
+            if (r == null || r.length() == 0) {
+                Text("No routines yet. The PC runs these automatically.",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                r.keys().asSequence().toList().forEach { k ->
+                    val o = r.optJSONObject(k) ?: return@forEach
+                    val enabled = o.optBoolean("enabled", true)
+                    val daysArr = o.optJSONArray("days")
+                    val daysTxt = if (daysArr != null && daysArr.length() > 0)
+                        " · " + (0 until daysArr.length()).joinToString("") {
+                            dayLetters.getOrElse(daysArr.optInt(it)) { "?" } } else " · daily"
+                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(o.optString("time") + "  " + actionLabel(o.optString("type")) + daysTxt,
+                            fontSize = 12.5.sp, modifier = Modifier.weight(1f),
+                            color = if (enabled) MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Switch(checked = enabled,
+                            onCheckedChange = { v -> scope.launch { Repo.setRoutineEnabled(k, v); reload() } },
+                            modifier = Modifier.scale(0.8f))
+                        IconButton(onClick = { scope.launch { Repo.deleteRoutine(k); reload() } },
+                            modifier = Modifier.size(34.dp)) {
+                            Icon(Icons.Filled.Delete, "Delete",
+                                modifier = Modifier.size(18.dp), tint = Rose)
+                        }
+                    }
+                }
+            }
+            if (showAdd) {
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = {
+                        val p = time.split(":")
+                        val hh = p.getOrNull(0)?.toIntOrNull() ?: 18
+                        val mm = p.getOrNull(1)?.toIntOrNull() ?: 30
+                        android.app.TimePickerDialog(ctx, { _, h, m ->
+                            time = "%02d:%02d".format(h, m) }, hh, mm, true).show()
+                    }) {
+                        Icon(Icons.Filled.Schedule, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp)); Text(time)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Box(Modifier.weight(1f)) {
+                        OutlinedButton(onClick = { actionExpanded = true },
+                            modifier = Modifier.fillMaxWidth()) {
+                            Text(actionLabel(action), fontSize = 12.5.sp, modifier = Modifier.weight(1f))
+                            Icon(Icons.Filled.ArrowDropDown, null)
+                        }
+                        DropdownMenu(actionExpanded, { actionExpanded = false }) {
+                            actions.forEach { (v, lbl) ->
+                                DropdownMenuItem(text = { Text(lbl) },
+                                    onClick = { action = v; actionExpanded = false })
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row {
+                    dayLetters.forEachIndexed { i, d ->
+                        FilterChip(selected = days.contains(i),
+                            onClick = { days = if (days.contains(i)) days - i else days + i },
+                            label = { Text(d, fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f).padding(end = if (i < 6) 3.dp else 0.dp))
+                    }
+                }
+                Text(if (days.isEmpty()) "No days selected = every day" else "Repeats on selected days",
+                    fontSize = 10.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp))
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    val daysJson = if (days.isNotEmpty())
+                        ""","days":[${days.sorted().joinToString(",")}]""" else ""
+                    val minutes = if (action == "mouse_start") ""","minutes":60""" else ""
+                    val body = """{"type":"$action","time":"$time","enabled":true$daysJson$minutes}"""
+                    scope.launch { Repo.addRoutine(body); days = emptySet(); showAdd = false; reload() }
+                }, modifier = Modifier.fillMaxWidth()) { Text("Add routine") }
+            }
+        }
     }
 }
 
