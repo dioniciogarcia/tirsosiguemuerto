@@ -638,17 +638,6 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
         Spacer(Modifier.height(12.dp))
 
         UpdateCard()
-        Spacer(Modifier.height(12.dp))
-
-        Card(shape = RoundedCornerShape(18.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                Text(Lang.t("Connection", "Conexión"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(10.dp))
-                OutlinedButton(onClick = {
-                    Repo.prefs.edit().remove("url").remove("secret").apply(); onEditConnection()
-                }, modifier = Modifier.fillMaxWidth()) { Text(Lang.t("Edit connection", "Editar conexión")) }
-            }
-        }
     }
 }
 
