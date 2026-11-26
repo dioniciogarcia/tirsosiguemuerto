@@ -10,7 +10,7 @@
         android:name=".App"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
-        android:label="WH Native"
+        android:label="WorkspaceHelper"
         android:supportsRtl="true">
         <activity
             android:name=".MainActivity"

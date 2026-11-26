@@ -63,8 +63,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: native-preview
-          name: Native app (preview)
-          prerelease: true
+          name: WorkspaceHelper (latest)
+          prerelease: false
           files: |
             android-app/WorkspaceHelper-native.apk
             android-app/native-version.txt
