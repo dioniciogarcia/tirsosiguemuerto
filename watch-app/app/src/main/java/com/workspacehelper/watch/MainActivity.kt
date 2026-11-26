@@ -29,7 +29,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CompactChip
@@ -80,6 +87,11 @@ fun WatchScreen(prefs: SharedPreferences) {
     val msgClient = remember { Wearable.getMessageClient(ctx) }
     val nodeClient = remember { Wearable.getNodeClient(ctx) }
 
+    val listState = rememberScalingLazyListState()
+    val focusRequester = remember { FocusRequester() }
+    // Pending confirmation: (command type, question label). Null = none.
+    var pending by remember { mutableStateOf<Pair<String, String>?>(null) }
+
     suspend fun phoneNode(): String? = withContext(Dispatchers.IO) {
         try {
             val nodes = nodeClient.connectedNodes.await()
@@ -128,10 +140,32 @@ fun WatchScreen(prefs: SharedPreferences) {
 
     Scaffold(
         timeText = { TimeText() },
-        vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) }
+        vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
+        positionIndicator = { PositionIndicator(scalingLazyListState = listState) }
     ) {
+        val p = pending
+        if (p != null) {
+            ConfirmScreen(
+                question = p.second, es = es,
+                onYes = { cmd(p.first); pending = null },
+                onNo = { pending = null }
+            )
+            return@Scaffold
+        }
+
+        // Keep rotary (bezel/crown) focus on the list.
+        LaunchedEffect(Unit) { try { focusRequester.requestFocus() } catch (e: Exception) {} }
+
         ScalingLazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .onRotaryScrollEvent { e ->
+                    scope.launch { listState.scrollBy(e.verticalScrollPixels) }
+                    true
+                }
+                .focusRequester(focusRequester)
+                .focusable(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
@@ -179,7 +213,7 @@ fun WatchScreen(prefs: SharedPreferences) {
 
             item {
                 Chip(
-                    onClick = { cmd("desktime_start") },
+                    onClick = { pending = "desktime_start" to t("Open DeskTime?", "¿Abrir DeskTime?") },
                     label = { Text(t("Open DeskTime", "Abrir DeskTime")) },
                     colors = ChipDefaults.primaryChipColors(backgroundColor = Violet),
                     modifier = Modifier.fillMaxWidth()
@@ -187,7 +221,7 @@ fun WatchScreen(prefs: SharedPreferences) {
             }
             item {
                 Chip(
-                    onClick = { cmd("desktime_stop") },
+                    onClick = { pending = "desktime_stop" to t("Close DeskTime?", "¿Cerrar DeskTime?") },
                     label = { Text(t("Close DeskTime", "Cerrar DeskTime")) },
                     colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth()
@@ -195,7 +229,7 @@ fun WatchScreen(prefs: SharedPreferences) {
             }
             item {
                 Chip(
-                    onClick = { cmd("panic") },
+                    onClick = { pending = "panic" to t("Stop everything?", "¿Detener todo?") },
                     label = { Text(t("Panic", "Pánico")) },
                     colors = ChipDefaults.chipColors(
                         backgroundColor = Color(0xFF2A1619), contentColor = Rose),
@@ -229,5 +263,33 @@ fun WatchScreen(prefs: SharedPreferences) {
                 )
             }
         }
+    }
+}
+
+@Composable
+fun ConfirmScreen(question: String, es: Boolean, onYes: () -> Unit, onNo: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            question, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center, color = MaterialTheme.colors.onBackground
+        )
+        Spacer(Modifier.height(12.dp))
+        Chip(
+            onClick = onYes,
+            label = { Text(if (es) "Confirmar" else "Confirm") },
+            colors = ChipDefaults.primaryChipColors(backgroundColor = Green),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(6.dp))
+        Chip(
+            onClick = onNo,
+            label = { Text(if (es) "Cancelar" else "Cancel") },
+            colors = ChipDefaults.secondaryChipColors(),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
