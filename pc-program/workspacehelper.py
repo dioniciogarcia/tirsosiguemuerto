@@ -235,6 +235,9 @@ class Helper:
         # database. The id defaults to a slug of the device name.
         self.device_id = cfg.get("device_id") or slugify(cfg.get("device_name"))
         self.base = "devices/%s" % self.device_id
+        # Scheduled routines: track what already fired this minute.
+        self._fired_minute = ""
+        self._fired = set()
 
     # ---- actions ----------------------------------------------------------
     def desktime_is_running(self):
@@ -370,6 +373,43 @@ class Helper:
         self.mouse_stop()
         self.desktime_stop()
 
+    # ---- scheduled routines ----------------------------------------------
+    def check_routines(self):
+        """Run any routine whose time matches now (checked each loop)."""
+        now = dt.datetime.now().strftime("%H:%M")
+        if now != self._fired_minute:
+            self._fired_minute = now
+            self._fired = set()
+        try:
+            routines = self.fb.get(self.base + "/routines")
+        except Exception:
+            return
+        if not isinstance(routines, dict):
+            return
+        for key, r in routines.items():
+            if not isinstance(r, dict):
+                continue
+            if not r.get("enabled", True):
+                continue
+            if r.get("time") != now:
+                continue
+            if key in self._fired:
+                continue
+            self._fired.add(key)
+            self._run_routine(r)
+
+    def _run_routine(self, r):
+        rtype = r.get("type", "")
+        log("Routine firing: %s at %s" % (rtype, r.get("time")))
+        if rtype == "desktime_open":
+            self.desktime_start()
+        elif rtype == "desktime_close":
+            self.desktime_stop()
+        elif rtype == "mouse_start":
+            self.mouse_start(r.get("minutes", 0))
+        elif rtype == "shutdown":
+            os.system("shutdown /s /t 60")
+
     # ---- command dispatch -------------------------------------------------
     def handle_command(self, cmd):
         ctype = (cmd or {}).get("type", "")
@@ -447,6 +487,9 @@ class Helper:
                         log("Shutdown time reached - shutting down in 60s.")
                         os.system("shutdown /s /t 60")
                         self.shutdown_at = None
+
+                # scheduled routines
+                self.check_routines()
             except Exception as e:
                 log("Status loop error: %s" % e)
             time.sleep(hb)
