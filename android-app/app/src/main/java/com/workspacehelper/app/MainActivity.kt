@@ -588,15 +588,17 @@ fun SettingsScreen(dark: Boolean, onTheme: (Boolean) -> Unit, onEditConnection: 
         Spacer(Modifier.height(12.dp))
         ToggleCard("PC offline alerts", "Notify when the PC goes offline", notif) {
             notif = it; Repo.prefs.edit().putBoolean("notif_enabled", it).apply()
-            if (it) {
-                if (android.os.Build.VERSION.SDK_INT >= 33)
-                    permLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                val w = PeriodicWorkRequest.Builder(StatusWorker::class.java, 15, TimeUnit.MINUTES).build()
-                WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
-                    "status-check", ExistingPeriodicWorkPolicy.UPDATE, w)
-            } else {
-                WorkManager.getInstance(ctx).cancelUniqueWork("status-check")
-            }
+            try {
+                if (it) {
+                    if (android.os.Build.VERSION.SDK_INT >= 33)
+                        permLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    val w = PeriodicWorkRequest.Builder(StatusWorker::class.java, 15, TimeUnit.MINUTES).build()
+                    WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
+                        "status-check", ExistingPeriodicWorkPolicy.UPDATE, w)
+                } else {
+                    WorkManager.getInstance(ctx).cancelUniqueWork("status-check")
+                }
+            } catch (e: Exception) { /* never crash the toggle */ }
         }
         Spacer(Modifier.height(12.dp))
 
