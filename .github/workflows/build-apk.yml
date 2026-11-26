@@ -51,6 +51,9 @@ jobs:
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk WorkspaceHelper.apk
 
+      - name: Write version file
+        run: grep versionName app/build.gradle | head -1 | sed -E 's/.*"([^"]+)".*/\1/' > version.txt
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -62,4 +65,6 @@ jobs:
         with:
           tag_name: app-latest
           name: Android app (latest)
-          files: android-app/WorkspaceHelper.apk
+          files: |
+            android-app/WorkspaceHelper.apk
+            android-app/version.txt

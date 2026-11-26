@@ -449,6 +449,15 @@ class Helper:
                                       if isinstance(cmds[k], dict) else 0):
                         self.handle_command(cmds[key])
                         try:
+                            self.fb.put(self.base + "/last_ack", {
+                                "key": key,
+                                "type": cmds[key].get("type", "")
+                                        if isinstance(cmds[key], dict) else "",
+                                "ts": int(time.time()),
+                            })
+                        except Exception:
+                            pass
+                        try:
                             self.fb.delete(self.base + "/commands/%s" % key)
                         except Exception:
                             pass
